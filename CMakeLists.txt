@@ -34,6 +34,7 @@ set(SRCS
   ${H}/pshpack1.h ${H}/pshpack4.h ${H}/pshpack8.h ${H}/poppack.h
   ${S}/file_io.cpp ${H}/file_io.h ${H}/file_io.inl
   ${S}/strings.cpp ${H}/strings.h
+  ${S}/json.cpp ${H}/json.h
   )
 
 if(APPLE)
