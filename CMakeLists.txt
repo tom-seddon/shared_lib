@@ -1,5 +1,7 @@
 project(shared)
 
+include(shared_common.cmake)
+
 if(UNIX)
   find_package(Threads REQUIRED)
 endif()
