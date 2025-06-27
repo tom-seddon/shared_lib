@@ -2,6 +2,7 @@
 #include <shared/file_io.h>
 #include <shared/system_specific.h>
 #include <shared/log.h>
+#include <shared/path.h>
 
 #include <string.h>
 
@@ -121,7 +122,14 @@ done:;
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static bool SaveFile2(const void *data, size_t data_size, const std::string &path, const LogSet *logs, const char *fopen_mode) {
+static bool SaveFile2(const void *data, size_t data_size, const std::string &path, const LogSet *logs, uint32_t flags, const char *fopen_mode) {
+    if (flags & SaveFlag_CreateFolder) {
+        if (!PathCreateFolder(PathGetFolder(path))) {
+            AddError(logs, path, "save", "create folder failed", 0);
+            return false;
+        }
+    }
+
     FILE *f = fopenUTF8(path.c_str(), fopen_mode);
     if (!f) {
         AddError(logs, path, "save", "fopen failed", errno);
@@ -171,22 +179,22 @@ bool LoadTextFile(std::vector<char> *data, const std::string &path, const LogSet
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-bool SaveFile(const void *data, size_t data_size, const std::string &path, const LogSet *logs) {
-    return SaveFile2(data, data_size, path, logs, "wb");
+bool SaveFile(const void *data, size_t data_size, const std::string &path, const LogSet *logs, uint32_t flags) {
+    return SaveFile2(data, data_size, path, logs, flags, "wb");
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-bool SaveFile(const std::vector<uint8_t> &data, const std::string &path, const LogSet *logs) {
-    return SaveFile(data.data(), data.size(), path, logs);
+bool SaveFile(const std::vector<uint8_t> &data, const std::string &path, const LogSet *logs, uint32_t flags) {
+    return SaveFile(data.data(), data.size(), path, logs, flags);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-bool SaveTextFile(const std::string &data, const std::string &path, const LogSet *logs) {
-    return SaveFile2(data.c_str(), data.size(), path, logs, "wt");
+bool SaveTextFile(const std::string &data, const std::string &path, const LogSet *logs, uint32_t flags) {
+    return SaveFile2(data.c_str(), data.size(), path, logs, flags, "wt");
 }
 
 //////////////////////////////////////////////////////////////////////////

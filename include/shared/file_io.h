@@ -22,9 +22,9 @@ FILE *fopenUTF8(const char *path, const char *mode);
 bool LoadFile(std::vector<uint8_t> *data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
 bool LoadTextFile(std::vector<char> *data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
 
-bool SaveFile(const void *data, size_t data_size, const std::string &path, const LogSet *logs);
-bool SaveFile(const std::vector<uint8_t> &data, const std::string &path, const LogSet *logs);
-bool SaveTextFile(const std::string &data, const std::string &path, const LogSet *logs);
+bool SaveFile(const void *data, size_t data_size, const std::string &path, const LogSet *logs, uint32_t flags = 0);
+bool SaveFile(const std::vector<uint8_t> &data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
+bool SaveTextFile(const std::string &data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
