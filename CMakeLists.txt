@@ -113,10 +113,10 @@ endif()
 
 if(MUTEX_DEBUGGING_ENABLED)
   target_compile_definitions(shared_lib PUBLIC
-    MUTEX_DEBUGGING=0)
+    MUTEX_DEBUGGING=$<NOT:$<CONFIG:Final>>)
 else()
   target_compile_definitions(shared_lib PUBLIC
-    MUTEX_DEBUGGING=$<NOT:$<CONFIG:Final>>)
+    MUTEX_DEBUGGING=0)
 endif()
 
 add_subdirectory(tests)
