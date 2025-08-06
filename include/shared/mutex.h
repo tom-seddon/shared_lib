@@ -77,6 +77,7 @@ class Mutex {
 
     // the returned value isn't protected by any kind of mutex or
     // anything, so...
+    MutexMetadata *GetMutableMetadata();
     const MutexMetadata *GetMetadata() const;
 
     static std::vector<std::shared_ptr<MutexMetadata>> GetAllMetadata();
@@ -99,7 +100,7 @@ class Mutex {
     // in an attempt to avoid atrocious debug build performance.
     MutexMetadataImpl *m_meta = nullptr;
 
-    void OnInterestingEvents(uint8_t interesting_events);
+    void OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta);
 };
 
 // for use as a global.

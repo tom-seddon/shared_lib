@@ -228,6 +228,13 @@ void Mutex::SetName(std::string name) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+MutexMetadata *Mutex::GetMutableMetadata() {
+    return m_meta;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 const MutexMetadata *Mutex::GetMetadata() const {
     return m_meta;
 }
@@ -283,7 +290,7 @@ void Mutex::lock() {
     }
 
     if (interesting_events != 0) {
-        this->OnInterestingEvents(interesting_events);
+        this->OnInterestingEvents(interesting_events, m_meta);
     }
 }
 
@@ -362,16 +369,24 @@ void Mutex::SetAssumeFreeUncontendedLocks(bool assume_free_uncontended_locks) {
 //////////////////////////////////////////////////////////////////////////
 
 // This exists purely as somewhere to put a breakpoint.
-void Mutex::OnInterestingEvents(uint8_t interesting_events) {
+void Mutex::OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta) {
+    (void)meta;
+    
     if (interesting_events & MutexInterestingEvent_Lock) {
 #ifdef _MSC_VER
         __nop();
+#elif __APPLE__
+        int x=0;
+        (void)x;
 #endif
     }
 
     if (interesting_events & MutexInterestingEvent_ContendedLock) {
 #ifdef _MSC_VER
         __nop();
+#elif __APPLE__
+        int x=0;
+        (void)x;
 #endif
     }
 }
