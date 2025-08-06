@@ -13,7 +13,7 @@ EEND()
 
 #define ENAME SaveFlag
 EBEGIN()
-// If set, try to create folder 
+// If set, try to create folder
 EPNV(CreateFolder, 1)
 EEND()
 #undef ENAME

@@ -84,7 +84,7 @@ bool PathCreateFolder(const std::string &path) {
     int last_errno = 0;
 
     for (size_t i = 0; i < path.size(); ++i) {
-        if (path[i] == '/') {
+        if (i == path.size() - 1 || path[i] == '/') {
             std::string tmp = path.substr(0, i + 1);
 
             last_rc = mkdir(tmp.c_str(), 0777);
