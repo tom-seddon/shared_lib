@@ -371,12 +371,12 @@ void Mutex::SetAssumeFreeUncontendedLocks(bool assume_free_uncontended_locks) {
 // This exists purely as somewhere to put a breakpoint.
 void Mutex::OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta) {
     (void)meta;
-    
+
     if (interesting_events & MutexInterestingEvent_Lock) {
 #ifdef _MSC_VER
         __nop();
 #elif __APPLE__
-        int x=0;
+        int x = 0;
         (void)x;
 #endif
     }
@@ -385,7 +385,7 @@ void Mutex::OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *m
 #ifdef _MSC_VER
         __nop();
 #elif __APPLE__
-        int x=0;
+        int x = 0;
         (void)x;
 #endif
     }
