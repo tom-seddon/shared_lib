@@ -47,6 +47,8 @@ static void AddError(const LogSet *logs,
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+// TODO: should this read as binary and do platform-agnostic line ending
+// conversion?
 template <class ContType>
 static bool LoadFile2(ContType *data,
                       const std::string &path,
@@ -173,6 +175,14 @@ bool LoadTextFile(std::vector<char> *data, const std::string &path, const LogSet
     }
 
     data->push_back(0);
+    return true;
+}
+
+bool LoadTextFile(std::string *data, const std::string &path, const LogSet *logs, uint32_t flags) {
+    if (!LoadFile2(data, path, logs, flags, "rt")) {
+        return false;
+    }
+
     return true;
 }
 
