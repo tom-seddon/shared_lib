@@ -28,6 +28,9 @@ add_shared_test(test_log)
 add_shared_test(test_sha1)
 add_shared_test(test_enum)
 add_shared_test(test_load_store)
+add_shared_test(test_file_io)
+target_compile_definitions(test_file_io PRIVATE
+  -DTEST_FILES_FOLDER="${CMAKE_CURRENT_BINARY_DIR}")
 
 ##########################################################################
 ##########################################################################
