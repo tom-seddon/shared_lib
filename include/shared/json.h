@@ -44,11 +44,16 @@ struct JSON : private nlohmann::json {
     }
 
     template <class T>
-    void Load(T *value) const {
+    bool Load(T *value, std::string *ex_what = nullptr) const {
         try {
             *value = this->template get<T>();
-        } catch (nlohmann::json::exception &) {
-            // ...
+            return true;
+        } catch (nlohmann::json::exception &ex) {
+            if (ex_what) {
+                *ex_what = ex.what();
+            }
+
+            return false;
         }
     }
 
@@ -65,6 +70,9 @@ struct JSON : private nlohmann::json {
 struct JSON;
 
 #endif
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
