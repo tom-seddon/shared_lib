@@ -21,6 +21,7 @@ LOG_DEFINE(TESTING, "", &log_printer_stderr_and_debugger);
 struct TestFailCallback {
     TestFailFn fn;
     void *context;
+    std::function<void(const TestFailArgs *)> fun;
 };
 
 std::vector<TestFailCallback> g_fail_fns;
@@ -77,11 +78,15 @@ void AddTestFailFn(TestFailFn fn, void *context) {
     g_fail_fns.push_back({fn, context});
 }
 
+void AddTestFailFn(std::function<void(const TestFailArgs *)> fun, void *context) {
+    g_fail_fns.push_back({nullptr, context, std::move(fun)});
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
 void RemoveTestFailFnByContext(void *context) {
-    g_fail_fns.erase(std::remove_if(g_fail_fns.begin(), g_fail_fns.end(), [=](auto &&x) {
+    g_fail_fns.erase(std::remove_if(g_fail_fns.begin(), g_fail_fns.end(), [context](auto &&x) {
                          return x.context == context;
                      }),
                      g_fail_fns.end());
@@ -104,7 +109,11 @@ void TestFailed(const char *file, int line, const TestFailArgs *tfa) {
         }
 
         tmp_tfa.context = ff.context;
-        (*ff.fn)(&tmp_tfa);
+        if (ff.fn) {
+            (*ff.fn)(&tmp_tfa);
+        } else if (ff.fun) {
+            ff.fun(&tmp_tfa);
+        }
     }
 
     LOGF(TESTING, PRIfileline " test failure:\n", file, line);

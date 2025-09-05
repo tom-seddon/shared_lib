@@ -49,6 +49,7 @@ void TestFailed(const char *file, int line, const TestFailArgs *tfa);
 //////////////////////////////////////////////////////////////////////////
 
 void AddTestFailFn(TestFailFn fn, void *context);
+void AddTestFailFn(std::function<void(const TestFailArgs *)> fun, void *context); // the context is stored off only so it can be used to remove the function
 void RemoveTestFailFnByContext(void *context);
 
 void NORETURN TestQuit();
