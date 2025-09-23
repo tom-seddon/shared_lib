@@ -362,6 +362,8 @@ int TestEqAA(const void *got, const char *got_str, const void *wanted, const cha
             LOGF(TESTING, "    Mismatch index: %zu/%zu (0x%zx/0x%zx)\n", i, n, i, n);
             LOGF(TESTING, "      Wanted value: %u (0x%X)\n", w[i], w[i]);
             LOGF(TESTING, "         Got value: %u (0x%X)\n", g[i], g[i]);
+
+            break;
         }
     }
 
