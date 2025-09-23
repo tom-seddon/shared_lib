@@ -52,6 +52,23 @@ void AddTestFailFn(TestFailFn fn, void *context);
 void AddTestFailFn(std::function<void(const TestFailArgs *)> fun, void *context); // the context is stored off only so it can be used to remove the function
 void RemoveTestFailFnByContext(void *context);
 
+class TestFailFnAdder {
+  public:
+    TestFailFnAdder() = default;
+    explicit TestFailFnAdder(std::function<void(const TestFailArgs *)> fun);
+    ~TestFailFnAdder();
+
+    TestFailFnAdder(const TestFailFnAdder &) = delete;
+    TestFailFnAdder &operator=(const TestFailFnAdder &) = delete;
+    TestFailFnAdder(TestFailFnAdder &&) = delete;
+    TestFailFnAdder &operator=(TestFailFnAdder &&) = delete;
+
+    void Add(std::function<void(const TestFailArgs *)> fun);
+
+  protected:
+  private:
+};
+
 void NORETURN TestQuit();
 
 //////////////////////////////////////////////////////////////////////////
