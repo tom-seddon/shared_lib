@@ -35,3 +35,26 @@ std::string strprintfv(const char *fmt, va_list v) {
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
+
+bool ForEachLine(const std::string &str, std::function<bool(const std::string_view &line)> fun) {
+    const char *a = str.data(), *end = a + str.size(), *b = a;
+    while (b != end) {
+        char c = *b;
+        if (c == '\r' || c == '\n') {
+            if (!fun(std::string_view(a, (size_t)(b - a)))) {
+                return false;
+            }
+
+            ++b;
+            if ((*b == '\r' || *b == '\n') && *b != c) {
+                ++b;
+            }
+
+            a = b;
+        } else {
+            ++b;
+        }
+    }
+
+    return true;
+}
