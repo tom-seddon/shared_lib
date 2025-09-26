@@ -446,3 +446,20 @@ std::string GetUTF8StringFromThreadACPString(const char *str) {
     std::wstring wstr = GetWideString(str, strlen(str), CP_THREAD_ACP);
     return GetUTF8String(wstr);
 }
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+FARPROC FindProcAddress2(const char *dll, const char *name) {
+    HMODULE module = GetModuleHandleA(dll);
+    if (!module) {
+        return nullptr;
+    }
+
+    FARPROC proc = GetProcAddress(module, name);
+    if (!proc) {
+        return nullptr;
+    }
+
+    return proc;
+}

@@ -43,4 +43,21 @@ std::wstring GetWideString(const std::string &str);
 // Input string is in thread's current code page. Intended for use with argv.
 std::string GetUTF8StringFromThreadACPString(const char *str);
 
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+FARPROC FindProcAddress2(const char *dll, const char *name);
+
+template <class T>
+bool FindProcAddress(const char *dll, const char *name, T *proc) {
+    if (!*proc) {
+        *proc = (T)FindProcAddress2(dll, name);
+    }
+
+    return !!*proc;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 #endif
