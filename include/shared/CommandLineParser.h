@@ -30,6 +30,7 @@ class CommandLineParser {
         std::string *str_ptr = nullptr;
         std::vector<std::string> *strv_ptr = nullptr;
         int *int_ptr = nullptr;
+        float *float_ptr=nullptr;
 
         Option &Help(std::string help);
         Option &Meta(std::string meta);
@@ -40,6 +41,7 @@ class CommandLineParser {
         Option &Arg(std::string *str_ptr);
         Option &AddArgToList(std::vector<std::string> *strv_ptr);
         Option &Arg(int *int_ptr);
+        Option &Arg(float *float_ptr);
     };
 
     explicit CommandLineParser(std::string description = "", std::string summary = "");

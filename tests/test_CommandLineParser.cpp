@@ -49,6 +49,7 @@ static void TestBasic() {
     CommandLineParser p("Test program for shared/command_line library. Here are some more words in an attempt to test the word wrap. Four score and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty, and dedicated  to the proposition that all men are created equal.", "<args summary here>");
 
     int ai = 100, bi = 200, ci = 300;
+    float xf=100.f,yf=200.f,zf=300.f;
     std::string as = "StringA", bs = "StringB", cs = "StringC";
     bool af = false, bf = false, cf = false;
     std::vector<std::string> a_list;
@@ -56,6 +57,9 @@ static void TestBasic() {
     p.AddOption('a', "a-int").Arg(&ai).Help("set integer A. Blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah").ShowDefault().Meta("A");
     p.AddOption('b', "b-int").Arg(&bi).Help("set integer B").ShowDefault().Meta("B");
     p.AddOption('c', "c-int").Arg(&ci).Help("set integer C").ShowDefault().Meta("C");
+    p.AddOption('x', "x-float").Arg(&xf).Help("set float X. Blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah").ShowDefault().Meta("X");
+    p.AddOption('y', "y-float").Arg(&yf).Help("set float Y").ShowDefault().Meta("Y");
+    p.AddOption('z', "z-float").Arg(&zf).Help("set float Z").ShowDefault().Meta("Z");
     p.AddOption('A', "a-string").Arg(&as).Help("set string A").ShowDefault();
     p.AddOption('B', "b-string").Arg(&bs).Help("set string A").ShowDefault();
     p.AddOption('C', "c-string").Arg(&cs).Help("set string A").ShowDefault();
@@ -87,6 +91,15 @@ static void TestBasic() {
     TEST_EQ_II(ai, 102);
     TEST_FALSE(Test(p, {"-a", "fred"}));
     TEST_FALSE(Test(p, {"--a-int=fred"}));
+
+    // Float arg
+    TEST_TRUE(xf==100.f);//ugh
+    TEST_TRUE(Test(p,{"-x","101.5"}));
+    TEST_TRUE(xf==101.5f);
+    TEST_TRUE(Test(p,{"--x-float=102.5"}));
+    TEST_TRUE(xf==102.5);
+    TEST_FALSE(Test(p,{"-x","fred"}));
+    TEST_FALSE(Test(p,{"--x-float==fred"}));
 
     // String arg
     TEST_EQ_SS(as, "StringA");
