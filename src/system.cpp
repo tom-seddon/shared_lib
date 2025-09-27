@@ -94,7 +94,7 @@ size_t strlcpy(char *dest, const char *src, size_t size) {
 
 // This goes here because... it has to go somewhere.
 
-#define BIT(X, N) (((X)&1 << N) ? '1' : '0')
+#define BIT(X, N) (((X) & 1 << N) ? '1' : '0')
 #define BITS(X) {BIT(X, 7), BIT(X, 6), BIT(X, 5), BIT(X, 4), BIT(X, 3), BIT(X, 2), BIT(X, 1), BIT(X, 0), 0},
 #define AABBCCDD(A, Y, Z, W) BITS(((A) << 6 | (Y) << 4 | (Z) << 2 | (W)))
 #define AABBCC__(A, B, C) \

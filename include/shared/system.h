@@ -133,8 +133,7 @@ extern "C" void __nop(void);
 /* Disable VC++ warning. */
 #ifdef _MSC_VER
 
-#define VC_WARN_PUSH_DISABLE(X) __pragma(warning(push)) __pragma(warning(disable \
-                                                                         : X))
+#define VC_WARN_PUSH_DISABLE(X) __pragma(warning(push)) __pragma(warning(disable : X))
 #define VC_WARN_POP() __pragma(warning(pop))
 
 #else
