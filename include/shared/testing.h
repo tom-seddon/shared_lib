@@ -74,21 +74,22 @@ void NORETURN TestQuit();
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-#define TEST_FAILURE()                          \
-    BEGIN_MACRO{                                \
-        TestStartup();                          \
-        if (IsDebuggerAttached()) {             \
-            DEBUG_BREAK();                      \
-        }                                       \
-        TestQuit();                             \
-    }END_MACRO                                  \
+#define TEST_FAILURE()              \
+    BEGIN_MACRO {                   \
+        TestStartup();              \
+        if (IsDebuggerAttached()) { \
+            DEBUG_BREAK();          \
+        }                           \
+        TestQuit();                 \
+    }                               \
+    END_MACRO
 
-#define TEST(...)                               \
-    BEGIN_MACRO {                               \
-        if (!(__VA_ARGS__)) {                   \
-            TEST_FAILURE();                     \
-        }                                       \
-    }                                           \
+#define TEST(...)             \
+    BEGIN_MACRO {             \
+        if (!(__VA_ARGS__)) { \
+            TEST_FAILURE();   \
+        }                     \
+    }                         \
     END_MACRO
 
 //////////////////////////////////////////////////////////////////////////
@@ -201,11 +202,12 @@ int TestEqPP(const void *got, const char *got_str, const void *wanted, const cha
 
 void PRINTF_LIKE(3, 4) TestFail(const char *file, int line, const char *fmt, ...);
 
-#define TEST_FAIL(...)                                  \
-    BEGIN_MACRO{                                        \
-        TestFail(__FILE__, __LINE__, __VA_ARGS__);      \
-        TEST_FAILURE();                                 \
-    }END_MACRO
+#define TEST_FAIL(...)                             \
+    BEGIN_MACRO {                                  \
+        TestFail(__FILE__, __LINE__, __VA_ARGS__); \
+        TEST_FAILURE();                            \
+    }                                              \
+    END_MACRO
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,7 @@ class CommandLineParser {
         std::string *str_ptr = nullptr;
         std::vector<std::string> *strv_ptr = nullptr;
         int *int_ptr = nullptr;
-        float *float_ptr=nullptr;
+        float *float_ptr = nullptr;
 
         Option &Help(std::string help);
         Option &Meta(std::string meta);

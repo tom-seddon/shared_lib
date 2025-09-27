@@ -407,7 +407,7 @@ void CommandLineParser::Help(const char *argv0) const {
 
                     if (option->int_ptr) {
                         msg += "(Default: " + std::to_string(*option->int_ptr) + ")";
-                    } else if(option->float_ptr){
+                    } else if (option->float_ptr) {
                         msg += "(Default: " + std::to_string(*option->float_ptr) + ")";
                     } else if (option->str_ptr) {
                         msg += "(Default: ``" + *option->str_ptr + "'')";
@@ -512,15 +512,15 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
         *option->int_ptr = (int)l;
     }
 
-    if(option->float_ptr){
-        char*ep;
-        double d=strtod(arg.c_str(),&ep);
-        if(*ep!=0){
-            m_error_log->f("invalid number: %s\n",arg.c_str());
+    if (option->float_ptr) {
+        char *ep;
+        double d = strtod(arg.c_str(), &ep);
+        if (*ep != 0) {
+            m_error_log->f("invalid number: %s\n", arg.c_str());
             return false;
         }
 
-        *option->float_ptr=(float)d;
+        *option->float_ptr = (float)d;
     }
 
     return true;
@@ -530,7 +530,7 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
 //////////////////////////////////////////////////////////////////////////
 
 bool CommandLineParser::NeedsArgument(const std::shared_ptr<Option> &option) const {
-    return option->str_ptr || option->int_ptr || option->float_ptr||option->strv_ptr;
+    return option->str_ptr || option->int_ptr || option->float_ptr || option->strv_ptr;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -49,7 +49,7 @@ static void TestBasic() {
     CommandLineParser p("Test program for shared/command_line library. Here are some more words in an attempt to test the word wrap. Four score and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty, and dedicated  to the proposition that all men are created equal.", "<args summary here>");
 
     int ai = 100, bi = 200, ci = 300;
-    float xf=100.f,yf=200.f,zf=300.f;
+    float xf = 100.f, yf = 200.f, zf = 300.f;
     std::string as = "StringA", bs = "StringB", cs = "StringC";
     bool af = false, bf = false, cf = false;
     std::vector<std::string> a_list;
@@ -93,13 +93,13 @@ static void TestBasic() {
     TEST_FALSE(Test(p, {"--a-int=fred"}));
 
     // Float arg
-    TEST_TRUE(xf==100.f);//ugh
-    TEST_TRUE(Test(p,{"-x","101.5"}));
-    TEST_TRUE(xf==101.5f);
-    TEST_TRUE(Test(p,{"--x-float=102.5"}));
-    TEST_TRUE(xf==102.5);
-    TEST_FALSE(Test(p,{"-x","fred"}));
-    TEST_FALSE(Test(p,{"--x-float==fred"}));
+    TEST_TRUE(xf == 100.f); //ugh
+    TEST_TRUE(Test(p, {"-x", "101.5"}));
+    TEST_TRUE(xf == 101.5f);
+    TEST_TRUE(Test(p, {"--x-float=102.5"}));
+    TEST_TRUE(xf == 102.5);
+    TEST_FALSE(Test(p, {"-x", "fred"}));
+    TEST_FALSE(Test(p, {"--x-float==fred"}));
 
     // String arg
     TEST_EQ_SS(as, "StringA");
