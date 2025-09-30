@@ -103,9 +103,10 @@ elseif(MSVC)
   # C4098: void function returning a value
   # C4113: <function pointer type> differs in parameter lists from <function pointer>
   # C4715: not all control paths return a value
+  # C4834: discarding return value of function with [[nodiscard]] attribute
   
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /we4013 /we4022 /we4028 /we4716 /we4047 /we4020 /we4133 /we4096 /we4113 /we4715 /we4800")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /we4013 /we4022 /we4028 /we4716 /we4047 /we4020 /we4133 /we4098 /we4113 /we4715 /we4800")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /we4013 /we4022 /we4028 /we4716 /we4047 /we4020 /we4133 /we4098 /we4113 /we4715 /we4800 /we4834")
   
   # Warnings not relevant for C99:
   #
