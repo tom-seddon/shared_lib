@@ -32,6 +32,11 @@ if(${CMAKE_C_COMPILER_ID} MATCHES "GNU|Clang")
   #   endif()
   # endif()
 
+  if(${CMAKE_C_COMPILER_ID} MATCHES "GNU")
+    # barf on unused [[nodiscard]].
+    add_definitions("-Werror=unused-result")
+  endif()
+
   if(${CMAKE_C_COMPILER_ID} MATCHES "Clang")
     add_definitions("-Wno-invalid-offsetof")
     add_definitions("-Werror=incompatible-pointer-types")
