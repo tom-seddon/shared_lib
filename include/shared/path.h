@@ -31,7 +31,7 @@ bool PathIsSeparatorChar(char c);
 // |--- folder ---||-- name --|
 //                         |  |
 //                        /   |
-//                       |name|
+//                        |ext|
 // </pre>
 //
 // (the name part includes the extension)
