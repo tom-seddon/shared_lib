@@ -37,6 +37,7 @@ set(SRCS
   ${S}/file_io.cpp ${H}/file_io.h ${H}/file_io.inl
   ${S}/strings.cpp ${H}/strings.h
   ${S}/json.cpp ${H}/json.h
+  ${S}/guid.cpp ${H}/guid.h
   )
 
 if(APPLE)
