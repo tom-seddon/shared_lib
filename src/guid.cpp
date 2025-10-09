@@ -79,6 +79,86 @@ void GetStringFromGuid(char *str, const Guid &guid) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+static int GetNybble(const char **c) {
+    char ch = **c;
+    ++*c;
+
+    if (ch >= '0' && ch <= '9') {
+        return ch - '0';
+    } else if (ch >= 'A' && ch <= 'F') {
+        return ch - 'A' + 10;
+    } else if (ch >= 'a' && ch <= 'f') {
+        return ch - 'a' + 10;
+    } else {
+        return -1;
+    }
+}
+
+static bool GetByte(uint8_t *value, const char **c) {
+    int h = GetNybble(c);
+    if (h < 0) {
+        return false;
+    }
+
+    int l = GetNybble(c);
+    if (l < 0) {
+        return false;
+    }
+
+    *value = l | h << 4;
+    return true;
+}
+
+// {207af3bc-e5f3-4660-8278-6f4dd93f3b47}
+
+bool GetGuidFromString(Guid *guid, const char *str) {
+    const char *c = str;
+
+    if (*c++ != '{') {
+        return false;
+    }
+
+    int i = 0;
+
+    if (!GetByte(&guid->bytes[i++], &c) ||
+        !GetByte(&guid->bytes[i++], &c) ||
+        !GetByte(&guid->bytes[i++], &c) ||
+        !GetByte(&guid->bytes[i++], &c)) {
+        return false;
+    }
+
+    while (i < 10) {
+        if (*c++ != '-') {
+            return false;
+        }
+
+        if (!GetByte(&guid->bytes[i++], &c) || !GetByte(&guid->bytes[i++], &c)) {
+            return false;
+        }
+    }
+
+    if (*c++ != '-') {
+        return false;
+    }
+
+    while (i < 16) {
+        if (!GetByte(&guid->bytes[i++], &c)) {
+            return false;
+        }
+    }
+
+    ASSERT(i == 16);
+
+    if (*c++ != '}') {
+        return false;
+    }
+
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 bool operator<(const Guid &a, const Guid &b) {
     return memcmp(&a, &b, sizeof(Guid)) < 0;
 }
