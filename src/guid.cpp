@@ -105,7 +105,7 @@ static bool GetByte(uint8_t *value, const char **c) {
         return false;
     }
 
-    *value = l | h << 4;
+    *value = (uint8_t)(l | h << 4);
     return true;
 }
 
