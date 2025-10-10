@@ -62,6 +62,10 @@ if(${CMAKE_C_COMPILER_ID} MATCHES "GNU|Clang")
   add_definitions("-Wno-overlength-strings")
   add_definitions("-Wunused-parameter")
 
+  # Don't set this for C. The attribute to silence the warning is only
+  # standardized in C23.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wimplicit-fallthrough")
+
   # set(CMAKE_C_FLAGS_RELWITHDEBINFO "-save-temps=obj ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
   # set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-save-temps=obj ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
