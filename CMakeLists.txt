@@ -30,7 +30,7 @@ set(SRCS
   ${S}/load_store.cpp ${H}/load_store.h
   ${S}/enums.cpp ${H}/enums.h ${H}/enum_decl.h  ${H}/enum_def.h  ${H}/enum_end.h
   ${H}/system_specific.h
-  ${H}/popwarn.h ${H}/pushwarn_bitfields.h ${H}/pushwarn_flexible_struct_member.h ${H}/pushwarn_padded_struct.h ${H}/pushwarn_deprecated.h
+  ${H}/popwarn.h ${H}/pushwarn_bitfields.h ${H}/pushwarn_flexible_struct_member.h ${H}/pushwarn_padded_struct.h ${H}/pushwarn_deprecated.h ${H}/pushwarn_case_fallthrough.h
   ${S}/relacy.cpp ${H}/relacy.h
   ${S}/mutex.cpp ${H}/mutex.h ${H}/mutex.inl
   ${H}/pshpack1.h ${H}/pshpack4.h ${H}/pshpack8.h ${H}/poppack.h
