@@ -78,8 +78,6 @@ extern "C" void __nop(void);
 #define CPU_X64 1
 #elif (defined __arm__) || (defined __aarch64__)
 #define CPU_ARM 1
-#elif defined __PPC && __SIZEOF_POINTER__ == 4
-#define CPU_PPC32 1
 #else
 #error Unknown gcc CPU
 #endif
@@ -116,10 +114,6 @@ extern "C" void __nop(void);
 #if CPU_X86 || CPU_X64 || CPU_ARM
 
 #define CPU_LITTLE_ENDIAN 1
-
-#elif CPU_PPC32
-
-#define CPU_BIG_ENDIAN 1
 
 #else
 
