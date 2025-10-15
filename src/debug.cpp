@@ -14,36 +14,34 @@
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void DumpProcessLoadAddress(void) {
-#if SYSTEM_OSX
+// This is theoretically useful, but it's never actually proven necessary...
 
-    /* This is a pretty stinky workaround for backtrace_symbols's
-     * inability to print line numbers and the ASLR bullshit. */
-
-    /* http://stackoverflow.com/a/22625223/1618406 */
-    const struct segment_command_64 *command = getsegbyname("__TEXT");
-    if (!command) {
-        return;
-    }
-
-    intptr_t slide = 0;
-
-    char path[4096];
-    uint32_t size = sizeof path;
-    if (_NSGetExecutablePath(path, &size) == -1) {
-        return;
-    }
-
-    for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
-        if (strcmp(_dyld_get_image_name(i), path) == 0) {
-            slide = _dyld_get_image_vmaddr_slide(i);
-            break;
-        }
-    }
-
-    fprintf(stderr, "Load address: 0x%" PRIx64 "\n", (uint64_t)(command->vmaddr + (uint64_t)slide));
-#endif
-}
+//static void DumpProcessLoadAddress(void) {
+//#if SYSTEM_OSX
+//
+//    intptr_t slide = 0;
+//    const struct mach_header *header = nullptr;
+//
+//    char path[4096];
+//    uint32_t size = sizeof path;
+//    if (_NSGetExecutablePath(path, &size) == -1) {
+//        return;
+//    }
+//
+//    for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
+//        if (strcmp(_dyld_get_image_name(i), path) == 0) {
+//            header = _dyld_get_image_header(i);
+//            slide = _dyld_get_image_vmaddr_slide(i);
+//            break;
+//        }
+//    }
+//
+//    fprintf(stderr, "Path (for atos -o): %s\n", path);
+//    fprintf(stderr, "Load address (for atos -l): %p\n", (void *)header);
+//    fprintf(stderr, "Slide (for atos -s): %" PRIdPTR "\n", slide);
+//
+//#endif
+//}
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -68,7 +66,7 @@ static void DumpStackTrace(const char *function) {
         symbols = NULL;
     }
 
-    DumpProcessLoadAddress();
+    //DumpProcessLoadAddress();
 }
 
 //////////////////////////////////////////////////////////////////////////

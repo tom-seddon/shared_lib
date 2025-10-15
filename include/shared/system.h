@@ -218,17 +218,20 @@ int IsDebuggerAttached(void);
 
 #elif CPU_ARM
 
-#define DEBUG_BREAK() (abort())
+#ifdef __clang__
 
-#define BREAK()        \
-    BEGIN_MACRO {      \
-        DEBUG_BREAK(); \
-    }                  \
-    END_MACRO
+#define DEBUG_BREAK() (__builtin_debugtrap(), (void)0)
 
-#elif CPU_PPC32
+#else
 
-#define DEBUG_BREAK() (abort())
+// gcc doesn't do __builtin_debugtrap: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99299
+//
+// (and the current assumption is clearly that if you're building for ARM,
+// it's POSIX - but of course, this is not automatically true, and this'll
+// get revisited at some point.)
+#define DEBUG_BREAK() (raise(SIGTRAP),(void)0)
+
+#endif
 
 #define BREAK()        \
     BEGIN_MACRO {      \

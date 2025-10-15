@@ -29,6 +29,11 @@
 /* If true, use `atos' to get higher-quality backtrace symbols. */
 #define USE_ATOS 1
 
+#if USE_ATOS
+// if true, produce extra output on stdout when running atos.
+#define VERBOSE_ATOS 0
+#endif
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
@@ -86,10 +91,10 @@ struct Image {
 // #endif
 
 #if USE_ATOS
-static void GetBacktraceSymbols(char **symbols,
-                                void *const *addresses,
-                                int num_addresses,
-                                const Image &image) {
+static void GetBacktraceSymbolsForImage(char **symbols,
+                                        void *const *addresses,
+                                        int num_addresses,
+                                        const Image &image) {
     std::vector<int> indexes;
     ASSERT(num_addresses >= 0);
     indexes.reserve((size_t)num_addresses);
@@ -100,6 +105,10 @@ static void GetBacktraceSymbols(char **symbols,
         }
     }
 
+#if VERBOSE_ATOS
+    printf("*** %zu addresses in: %s\n", indexes.size(), image.name.c_str());
+#endif
+    
     if (indexes.empty()) {
         return;
     }
@@ -135,15 +144,13 @@ static void GetBacktraceSymbols(char **symbols,
 
     argv.push_back(nullptr);
 
-    /* for(int i=0;i<num_addresses;++i) { */
-    /*     printf("%d. %p\n",i,addresses[i]); */
-    /* } */
-
-    /* for(int i=0;i<argc;++i) { */
-    /*     printf("%s ",argv[i]); */
-    /*     //printf("new argv[%d]: %s\n",i,argv[i]); */
-    /* } */
-    /* printf("\n"); */
+//    printf("*** command line:");
+//    for (const char *arg : argv) {
+//        if (arg) {
+//            printf(" '%s'", arg);
+//        }
+//    }
+//    printf("\n");
 
     if (pipe(fds) == -1) {
         goto done;
@@ -179,13 +186,41 @@ static void GetBacktraceSymbols(char **symbols,
                 }
             }
 
+#if VERBOSE_ATOS
+            printf("*** output size: %zu\n", output.size());
+#endif
             output.push_back(0);
 
+            // horrid ugly loop.
             int status;
-            if (waitpid(pid, &status, 0) != pid) {
-                goto done;
+            for (;;) {
+                int waitpid_result = waitpid(pid, &status, 0);
+#if VERBOSE_ATOS
+                printf("*** waitpid returned: %d (errno=%d)\n", waitpid_result, errno);
+#endif
+                if(waitpid_result==pid){
+                    // Child status retrieved.
+                    break;
+                } else {
+                    // Probably -1.
+                    if (errno == EINTR) {
+                        // Just ignore this and try again. This happens
+                        // when Xcode is debugging the process.
+                        continue;
+                    } else if (errno == ECHILD) {
+                        // No children left that weren't previously awaited.
+                        // Child status retrieved.
+                        break;
+                    } else {
+                        // Some other thing. Assume it's bad.
+                        goto done;
+                    }
+                }
             }
 
+#if VERBOSE_ATOS
+            printf("*** child status was: 0x%x\n", (unsigned)pid);
+#endif
             if (!(WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
                 goto done;
             }
@@ -293,9 +328,18 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
     std::vector<char *> symbols;
     symbols.resize((size_t)num_addresses);
 
+#if VERBOSE_ATOS
+    for (size_t i = 0; i < images.size(); ++i) {
+        printf("*** image %zu (dyld #%" PRIu32 "): 0x%" PRIx64 "-0x%" PRIx64 ": %s\n", i, images[i].dyld_index, images[i].begin, images[i].end, images[i].name.c_str());
+    }
+    for (int i = 0; i < num_addresses; ++i) {
+        printf("*** address %d: 0x%" PRIxPTR "\n", i, (uintptr_t)addresses[i]);
+    }
+#endif
+
     /* Batch atos invocations by image. */
     for (const Image &image : images) {
-        GetBacktraceSymbols(symbols.data(), addresses, num_addresses, image);
+        GetBacktraceSymbolsForImage(symbols.data(), addresses, num_addresses, image);
     }
 
     /* If any entries are missing, fill them in with the address. */
