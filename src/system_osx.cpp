@@ -108,7 +108,7 @@ static void GetBacktraceSymbolsForImage(char **symbols,
 #if VERBOSE_ATOS
     printf("*** %zu addresses in: %s\n", indexes.size(), image.name.c_str());
 #endif
-    
+
     if (indexes.empty()) {
         return;
     }
@@ -144,13 +144,13 @@ static void GetBacktraceSymbolsForImage(char **symbols,
 
     argv.push_back(nullptr);
 
-//    printf("*** command line:");
-//    for (const char *arg : argv) {
-//        if (arg) {
-//            printf(" '%s'", arg);
-//        }
-//    }
-//    printf("\n");
+    //    printf("*** command line:");
+    //    for (const char *arg : argv) {
+    //        if (arg) {
+    //            printf(" '%s'", arg);
+    //        }
+    //    }
+    //    printf("\n");
 
     if (pipe(fds) == -1) {
         goto done;
@@ -198,7 +198,7 @@ static void GetBacktraceSymbolsForImage(char **symbols,
 #if VERBOSE_ATOS
                 printf("*** waitpid returned: %d (errno=%d)\n", waitpid_result, errno);
 #endif
-                if(waitpid_result==pid){
+                if (waitpid_result == pid) {
                     // Child status retrieved.
                     break;
                 } else {

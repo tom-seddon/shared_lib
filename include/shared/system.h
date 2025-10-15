@@ -229,7 +229,7 @@ int IsDebuggerAttached(void);
 // (and the current assumption is clearly that if you're building for ARM,
 // it's POSIX - but of course, this is not automatically true, and this'll
 // get revisited at some point.)
-#define DEBUG_BREAK() (raise(SIGTRAP),(void)0)
+#define DEBUG_BREAK() (raise(SIGTRAP), (void)0)
 
 #endif
 
