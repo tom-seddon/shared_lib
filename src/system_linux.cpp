@@ -14,6 +14,9 @@
 #include <vector>
 #include <string>
 #include <sys/prctl.h>
+#include <map>
+#include <algorithm>
+#include <shared/strings.h>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -37,10 +40,8 @@ int IsDebuggerAttached() {
 //////////////////////////////////////////////////////////////////////////
 
 #if USE_ADDR2LINE
-struct Module {
-    std::string name;
-    uint64_t begin;
-    uint64_t end;
+struct AddressRange {
+    uint64_t begin = UINT64_MAX, end = 0;
 };
 #endif
 
@@ -68,10 +69,11 @@ static bool ReadFD(std::vector<char> *output, int fd) {
 #endif
 
 #if USE_ADDR2LINE
-static void GetBacktraceSymbols(char **symbols,
-                                void *const *addresses,
-                                int num_addresses,
-                                const Module &module) {
+static void GetBacktraceSymbolsForModule(std::vector<std::string> *symbols,
+                                         void *const *addresses,
+                                         int num_addresses,
+                                         const std::string &module_name,
+                                         const std::vector<AddressRange> &module_address_ranges) {
     std::vector<size_t> indexes;
     int fds[2] = {-1, -1};
     std::vector<char> output;
@@ -80,9 +82,15 @@ static void GetBacktraceSymbols(char **symbols,
     indexes.reserve((size_t)num_addresses);
 
     for (int i = 0; i < num_addresses; ++i) {
-        if ((uint64_t)(uintptr_t)addresses[i] >= module.begin &&
-            (uint64_t)(uintptr_t)addresses[i] < module.end) {
-            indexes.push_back((size_t)i);
+        uint64_t address = (uint64_t)(uintptr_t)addresses[i];
+
+        for (size_t j = 0; j < module_address_ranges.size(); ++j) {
+            const AddressRange *range = &module_address_ranges[j];
+            ASSERT(j == 0 || range->begin >= module_address_ranges[j - 1].begin);
+            if (address >= range->begin && address < range->end) {
+                indexes.push_back((size_t)i);
+                break;
+            }
         }
     }
 
@@ -90,32 +98,28 @@ static void GetBacktraceSymbols(char **symbols,
         return;
     }
 
-    std::vector<char *> argv;
-    argv.reserve(5 + indexes.size() + 1);
-
-    argv.push_back((char *)"/usr/bin/addr2line");
-    argv.push_back((char *)"-e");
-    argv.push_back((char *)module.name.c_str());
-    argv.push_back((char *)"-fi");
-
-    size_t first_allocated = argv.size();
-
+    std::vector<std::string> address_strings;
     for (size_t index : indexes) {
-        // This appears to be how to get good backtraces for ASLR/PIE
-        // on Linux. See, e.g.,
-        // https://github.com/scylladb/seastar/issues/334
-        uint64_t offset = (uint64_t)(uintptr_t)addresses[index] - module.begin;
-        char *tmp;
-        if (asprintf(&tmp, "%" PRIx64, offset) == -1) {
-            goto done;
-        }
+        // For good backtraces with ASLR/PIE on Linux, supply an
+        // address relative to the base of the module. (See, e.g.,
+        // https://github.com/scylladb/seastar/issues/334.)
+        //
+        // The module address ranges are sorted, so the begin address
+        // of the module's first range is (hopefully...) its load
+        // address.
+        uint64_t offset = (uint64_t)(uintptr_t)addresses[index] - module_address_ranges[0].begin;
 
-        argv.push_back(tmp);
+        address_strings.push_back(strprintf("0x%" PRIx64, offset));
     }
 
-    /* for(int i=0;i<num_addresses;++i) { */
-    /*     printf("%d. %p\n",i,addresses[i]); */
-    /* } */
+    std::vector<const char *> argv;
+    argv.push_back("/usr/bin/addr2line");
+    argv.push_back("-e");
+    argv.push_back(module_name.c_str());
+    argv.push_back("-fi");
+    for (const std::string &address_string : address_strings) {
+        argv.push_back(address_string.c_str());
+    }
 
 #if DEBUG_ADDR2LINE
     for (const char *arg : argv) {
@@ -140,7 +144,7 @@ static void GetBacktraceSymbols(char **symbols,
             dup2(fds[1], STDOUT_FILENO);
             dup2(fds[1], STDERR_FILENO);
 
-            execv(argv[0], &argv[0]);
+            execv(argv[0], const_cast<char *const *>(&argv[0])); //tsk
             _exit(127);
         } else {
             close(fds[1]);
@@ -148,6 +152,9 @@ static void GetBacktraceSymbols(char **symbols,
 
             ReadFD(&output, fds[0]);
 
+            // See
+            // https://github.com/tom-seddon/shared_lib/commit/50188f7ad96ff79b67bc65a8034bc735c722284b
+            // - should this check for EINTR (etc.) too?
             int status;
             if (waitpid(pid, &status, 0) != pid) {
                 goto done;
@@ -172,11 +179,9 @@ static void GetBacktraceSymbols(char **symbols,
                     }
 
                     if (fun[0] != '?' && loc[0] != '?') {
-                        char **p = &symbols[indexes[i]];
-                        if (!*p) {
-                            if (asprintf(p, "%p: %s: %s", addresses[indexes[i]], fun, loc) == -1) {
-                                goto done;
-                            }
+                        std::string *str = &(*symbols)[indexes[i]];
+                        if (str->empty()) {
+                            *str = strprintf("%p: %s: %s", addresses[indexes[i]], fun, loc);
                         }
                     }
 
@@ -193,11 +198,6 @@ static void GetBacktraceSymbols(char **symbols,
     }
 
 done:;
-    for (size_t i = first_allocated; i < argv.size(); ++i) {
-        free(argv[i]);
-    }
-    argv.clear();
-
     for (int i = 0; i < 2; ++i) {
         if (fds[i] != -1) {
             close(fds[i]);
@@ -217,14 +217,11 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
 
     char *result = NULL;
 
-    std::vector<char *> symbols;
+    std::vector<std::string> symbols;
     symbols.resize((size_t)num_addresses);
 
     // contents of /proc/PID/maps
     std::vector<char> maps;
-
-    // modules list
-    std::vector<Module> modules;
 
     /* I don't know how you're *supposed* to read the /proc files.
      * There's a pretty obvious race condition here. */
@@ -233,7 +230,7 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
 
         int fd = open(fname.c_str(), O_RDONLY | O_CLOEXEC);
         if (fd == -1) {
-            goto done;
+            return nullptr;
         }
 
         bool good = ReadFD(&maps, fd);
@@ -242,7 +239,7 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
         fd = -1;
 
         if (!good) {
-            goto done;
+            return nullptr;
         }
     }
 
@@ -253,6 +250,8 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
     printf("----------------------------------------------------------------------\n");
 #endif
 
+    // Collect modules list by name, and unsorted address ranges for each.
+    std::map<std::string, std::vector<AddressRange>> ranges_by_name;
     {
         char *stringp = maps.data();
         for (;;) {
@@ -267,11 +266,16 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
             prot.resize(line_len + 1);
             name.resize(line_len + 1);
 
-            Module module;
+            // Module module;
             uint64_t pgoff;
 
+            AddressRange range;
             sscanf(line, "%" PRIx64 "-%" PRIx64 " %s %" PRIx64 " %*x:%*x %*u %s\n",
-                   &module.begin, &module.end, prot.data(), &pgoff, name.data());
+                   &range.begin,
+                   &range.end,
+                   prot.data(),
+                   &pgoff,
+                   name.data());
 
             if (strlen(name.data()) == 0) {
                 continue;
@@ -281,30 +285,62 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
                 continue;
             }
 
-            module.name = name.data(); //repeated copies... sad!
-
-            //module.end=module.begin+len;
-
-            modules.push_back(module);
-
-#if DEBUG_ADDR2LINE
-            printf("%s:\n", module.name.c_str());
-            printf("    From: 0x%" PRIx64 "\n", module.begin);
-            printf("    To: 0x%" PRIx64 " (+%" PRIu64 ")\n", module.end, module.end - module.begin);
-#endif
+            // repeated string copies :(
+            std::vector<AddressRange> *ranges = &ranges_by_name[name.data()];
+            ranges->push_back(range);
         }
     }
 
-    for (const Module &module : modules) {
-        GetBacktraceSymbols(symbols.data(), addresses, num_addresses, module);
+    // Sort address ranges for each module by begin.
+    for (auto &name_and_ranges : ranges_by_name) {
+        std::sort(name_and_ranges.second.begin(), name_and_ranges.second.end(),
+                  [](const AddressRange &a, const AddressRange &b) {
+                      return a.begin < b.begin;
+                  });
+    }
+
+    // Merge adjacent ranges. (This isn't strictly necessary, but it
+    // makes the debug output a bit nicer.)
+    for (auto &name_and_ranges : ranges_by_name) {
+        if (name_and_ranges.second.size() > 1) {
+            auto it = name_and_ranges.second.begin() + 1;
+            while (it != name_and_ranges.second.end()) {
+                if (it->begin == (it - 1)->end) {
+                    (it - 1)->end = it->end;
+                    it = name_and_ranges.second.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+    }
+
+#if DEBUG_ADDR2LINE
+    for (const auto &name_and_ranges : ranges_by_name) {
+        printf("%s:\n", name_and_ranges.first.c_str());
+        for (size_t i = 0; i < name_and_ranges.second.size(); ++i) {
+            const AddressRange *range = &name_and_ranges.second[i];
+            printf("  %zu. 0x%" PRIx64 "-0x%" PRIx64 " (+%" PRIu64 ")\n",
+                   i,
+                   range->begin,
+                   range->end,
+                   range->end - range->begin);
+        }
+    }
+#endif
+
+    for (const auto &name_and_ranges : ranges_by_name) {
+        GetBacktraceSymbolsForModule(&symbols,
+                                     addresses,
+                                     num_addresses,
+                                     name_and_ranges.first,
+                                     name_and_ranges.second);
     }
 
     /* If any entries are missing, fill them in with the address. */
     for (size_t i = 0; i < symbols.size(); ++i) {
-        if (!symbols[i]) {
-            if (asprintf(&symbols[i], "%p", addresses[i]) == -1) {
-                symbols[i] = nullptr;
-            }
+        if (symbols[i].empty()) {
+            symbols[i] = strprintf("%p", addresses[i]);
         }
     }
 
@@ -312,8 +348,8 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
     {
         size_t num_array_bytes = symbols.size() * sizeof(char *);
         size_t num_string_bytes = 0;
-        for (const char *symbol : symbols) {
-            num_string_bytes += strlen(symbol) + 1;
+        for (const std::string &symbol : symbols) {
+            num_string_bytes += symbol.size() + 1;
         }
 
         result = (char *)malloc(num_array_bytes + num_string_bytes);
@@ -323,18 +359,13 @@ char **GetBacktraceSymbols(void *const *addresses, int num_addresses) {
 
             for (size_t i = 0; i < symbols.size(); ++i) {
                 strings[i] = dest;
-                strcpy(dest, symbols[i]);
-                dest += strlen(dest) + 1;
+                size_t n = symbols[i].size();
+                memcpy(dest, symbols[i].c_str(), n + 1);
+                dest += n + 1;
             }
             ASSERT(dest == result + num_array_bytes + num_string_bytes);
         }
     }
-
-done:
-    for (char *symbol : symbols) {
-        free(symbol);
-    }
-    symbols.clear();
 
     return (char **)result;
 
