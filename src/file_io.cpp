@@ -1,3 +1,4 @@
+#define _FILE_OFFSET_BITS 64
 #include <shared/system.h>
 #include <shared/file_io.h>
 #include <shared/system_specific.h>
@@ -33,6 +34,11 @@ int fseek64(FILE *stream, int64_t offset, int origin) {
 
     return _fseeki64(stream, offset, origin);
 
+#elif SYSTEM_LINUX
+
+    static_assert(sizeof(off_t)==sizeof(int64_t));
+    return fseeko(stream,offset,origin);
+
 #else
 #error
 #endif
@@ -45,6 +51,11 @@ int64_t ftell64(FILE *stream) {
 #if SYSTEM_WINDOWS
 
     return _ftelli64(stream);
+
+#elif SYSTEM_LINUX
+
+    static_assert(sizeof(off_t)==sizeof(int64_t));
+    return ftello(stream);
 
 #else
 #error

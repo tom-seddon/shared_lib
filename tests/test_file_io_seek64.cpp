@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <vector>
 #include <shared/system_specific.h>
+#include <string.h>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -39,7 +40,7 @@ int main() {
     std::vector<uint8_t> got;
     TEST_TRUE(LoadFile(&got, path, nullptr));
 
-    printf("Coompare...\n");
+    printf("Compare...\n");
     TEST_EQ_UU(wanted.size(), got.size());
     TEST_EQ_II(memcmp(wanted.data(), got.data(), got.size()), 0);
 
@@ -47,9 +48,9 @@ int main() {
     FILE *fp = fopenUTF8(path.c_str(), "rb");
     TEST_NON_NULL(fp);
 
-    TEST_EQ_II(fseek64(fp, wanted.size() - 1, SEEK_SET), 0);
+    TEST_EQ_II(fseek64(fp, (int64_t)(wanted.size() - 1), SEEK_SET), 0);
     TEST_EQ_II(fgetc(fp), 255);
-    TEST_EQ_II(ftell64(fp), got.size());
+    TEST_EQ_II(ftell64(fp), (int64_t)got.size());
 
     fclose(fp), fp = nullptr;
 }
