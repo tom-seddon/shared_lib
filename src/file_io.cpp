@@ -28,6 +28,32 @@ FILE *fopenUTF8(const char *path, const char *mode) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+int fseek64(FILE *stream, int64_t offset, int origin) {
+#if SYSTEM_WINDOWS
+
+    return _fseeki64(stream, offset, origin);
+
+#else
+#error
+#endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+int64_t ftell64(FILE *stream) {
+#if SYSTEM_WINDOWS
+
+    return _ftelli64(stream);
+
+#else
+#error
+#endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 static void AddError(const LogSet *logs,
                      const std::string &path,
                      const char *what1,
@@ -58,7 +84,7 @@ static bool LoadFile2(ContType *data,
     static_assert(sizeof(typename ContType::value_type) == 1, "LoadFile2 can only load into a vector of bytes");
     FILE *f = NULL;
     bool good = false;
-    long len;
+    int64_t len;
     size_t num_bytes, num_read;
 
     f = fopenUTF8(path.c_str(), mode);
@@ -72,25 +98,25 @@ static bool LoadFile2(ContType *data,
         goto done;
     }
 
-    if (fseek(f, 0, SEEK_END) == -1) {
+    if (fseek64(f, 0, SEEK_END) == -1) {
         AddError(logs, path, "load", "fseek (1) failed", errno);
         goto done;
     }
 
-    len = ftell(f);
+    len = ftell64(f);
     if (len < 0) {
         AddError(logs, path, "load", "ftell failed", errno);
         goto done;
     }
 
-#if LONG_MAX > SIZE_MAX
-    if (len > (long)SIZE_MAX) {
+#if INT64_MAX > SIZE_MAX
+    if (len > (int64_t)SIZE_MAX) {
         AddError(logs, path, "load", "file is too large", 0);
         goto done;
     }
 #endif
 
-    if (fseek(f, 0, SEEK_SET) == -1) {
+    if (fseek64(f, 0, SEEK_SET) == -1) {
         AddError(logs, path, "load", "fseek (2) failed", errno);
         goto done;
     }

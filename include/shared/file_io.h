@@ -19,6 +19,12 @@ struct LogSet;
 
 FILE *fopenUTF8(const char *path, const char *mode);
 
+int fseek64(FILE *stream, int64_t offset, int origin);
+int64_t ftell64(FILE *stream);
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 bool LoadFile(std::vector<uint8_t> *data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
 bool LoadTextFile(std::vector<char> *data, const std::string &path, const LogSet *logs, uint32_t flags = 0);
 bool LoadTextFile(std::string *data, const std::string &path, const LogSet *logs, uint32_t flags = 0);

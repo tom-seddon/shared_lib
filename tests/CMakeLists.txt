@@ -18,6 +18,7 @@ endfunction()
 
 add_shared_test(test_assert DONT_RUN)
 add_shared_test(test_backtrace DONT_RUN)
+add_shared_test(test_file_io_seek64 DONT_RUN)
 
 ##########################################################################
 ##########################################################################
