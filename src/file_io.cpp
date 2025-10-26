@@ -34,10 +34,10 @@ int fseek64(FILE *stream, int64_t offset, int origin) {
 
     return _fseeki64(stream, offset, origin);
 
-#elif SYSTEM_LINUX||SYSTEM_OSX
+#elif SYSTEM_LINUX || SYSTEM_OSX
 
-    static_assert(sizeof(off_t)==sizeof(int64_t));
-    return fseeko(stream,offset,origin);
+    static_assert(sizeof(off_t) == sizeof(int64_t));
+    return fseeko(stream, offset, origin);
 
 #else
 #error
@@ -52,9 +52,9 @@ int64_t ftell64(FILE *stream) {
 
     return _ftelli64(stream);
 
-#elif SYSTEM_LINUX||SYSTEM_OSX
+#elif SYSTEM_LINUX || SYSTEM_OSX
 
-    static_assert(sizeof(off_t)==sizeof(int64_t));
+    static_assert(sizeof(off_t) == sizeof(int64_t));
     return ftello(stream);
 
 #else
