@@ -73,8 +73,8 @@ struct EnumFlags {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-template<class T>
-inline const char *GetEnumName(T value){
+template <class T>
+inline const char *GetEnumName(T value) {
     return (*EnumTraits<T>::GET_NAME_FN)(value);
 }
 
