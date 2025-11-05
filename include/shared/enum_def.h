@@ -35,8 +35,8 @@
 #define EQPNV(NAME, VALUE)
 
 #define EEND__BODY() \
-    }          \
-    }          \
+    }                \
+    }                \
     EEND_EXTRA()
 
 #define EEND() EEND__BODY()
