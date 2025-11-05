@@ -26,18 +26,23 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
-#define EEND()                                      \
-    }                                               \
-    ;                                               \
-    typedef enum ENAME ENAME;                       \
-                                                    \
-    template <>                                     \
-    struct EnumTraits<ENAME> {                      \
-        typedef CONCAT2(ENAME, BaseType) BaseType;  \
-        typedef const char *(*GetNameFn)(BaseType); \
-        static const GetNameFn GET_NAME_FN;         \
-        static const char NAME[];                   \
+#define EEND__BODY(SERIALIZABLE)                                \
+    }                                                           \
+    ;                                                           \
+    typedef enum ENAME ENAME;                                   \
+                                                                \
+    template <>                                                 \
+    struct EnumTraits<ENAME> {                                  \
+        typedef ENAME EnumType;                                 \
+        typedef CONCAT2(ENAME, BaseType) BaseType;              \
+        typedef const char *(*GetNameFn)(BaseType);             \
+        static const GetNameFn GET_NAME_FN;                     \
+        static const char NAME[];                               \
+        static constexpr bool IS_SERIALIZABLE = (SERIALIZABLE); \
     };
+
+#define EEND_SERIALIZABLE() EEND__BODY(true)
+#define EEND() EEND__BODY(false)
 
 //#define EOVERLOAD() const char *GetEnumValueName(ENAME value);
 

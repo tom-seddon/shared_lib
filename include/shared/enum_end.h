@@ -21,6 +21,8 @@
 
 #undef EOVERLOAD
 #undef EEND
+#undef EEND_SERIALIZABLE
+#undef EEND__BODY
 
 #undef NBEGIN
 #undef NEND

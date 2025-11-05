@@ -85,11 +85,13 @@ inline const char *GetEnumName(T value) {
 
 template <class T>
 void to_json(nlohmann::json &j, const Enum<T> &value) {
+    static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     j = (*EnumTraits<T>::GET_NAME_FN)(value.value);
 }
 
 template <class T>
 void from_json(const nlohmann::json &j, Enum<T> &value) {
+    static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     std::string str = j.get<std::string>();
 
     typename EnumTraits<T>::BaseType i = 0;
@@ -111,6 +113,7 @@ void from_json(const nlohmann::json &j, Enum<T> &value) {
 
 template <class T>
 void from_json(const nlohmann::json &j, EnumFlags<T> &value) {
+    static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     if (j.is_array()) {
         value.value = 0;
 
@@ -136,6 +139,7 @@ void from_json(const nlohmann::json &j, EnumFlags<T> &value) {
 
 template <class T>
 void to_json(nlohmann::json &j, const EnumFlags<T> &value) {
+    static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     j = nlohmann::json::array_t{};
     for (typename std::make_unsigned<typename EnumTraits<T>::BaseType>::type mask = 1; mask != 0; mask <<= 1) {
         const char *name = (*EnumTraits<T>::GET_NAME_FN)(static_cast<typename EnumTraits<T>::BaseType>(mask));

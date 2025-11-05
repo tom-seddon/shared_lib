@@ -34,10 +34,13 @@
 #define EQPN(NAME)
 #define EQPNV(NAME, VALUE)
 
-#define EEND() \
+#define EEND__BODY() \
     }          \
     }          \
     EEND_EXTRA()
+
+#define EEND() EEND__BODY()
+#define EEND_SERIALIZABLE() EEND__BODY()
 
 /* This gets a bit freakish. */
 #define NBEGIN(NAME)                                                \
