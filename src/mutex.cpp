@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string.h>
 #include <shared_mutex>
+#include <algorithm>
 
 #include <shared/enum_def.h>
 #include <shared/mutex.inl>
@@ -60,6 +61,8 @@ static std::shared_ptr<std::mutex> g_mutex_metadata_list_mutex;
 static std::once_flag g_mutex_metadata_list_mutex_initialise_once_flag;
 static std::atomic<uint64_t> g_mutex_name_overhead_ticks{0};
 static std::atomic<bool> g_assume_free_uncontended_locks{false};
+static std::vector<std::shared_ptr<MutexMetadata>> g_mutex_metadata_list;
+static bool g_is_mutex_metadata_list_valid = false;
 
 static MutexFullMetadata *g_mutex_metadata_head;
 
@@ -80,6 +83,16 @@ static void CheckMetadataList() {
             m = m->next;
         } while (m != g_mutex_metadata_head);
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+static void InvalidateMetadataList() {
+    g_is_mutex_metadata_list_valid = false;
+
+    // don't let any control blocks hang around unnecessarily.
+    g_mutex_metadata_list.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -185,6 +198,7 @@ Mutex::Mutex()
         m_metadata->next->prev = m_metadata.get();
     }
 
+    InvalidateMetadataList();
     CheckMetadataList();
 }
 
@@ -209,6 +223,7 @@ Mutex::~Mutex() {
 
         m_metadata->mutex = nullptr;
 
+        InvalidateMetadataList();
         CheckMetadataList();
     }
 }
@@ -326,22 +341,31 @@ void Mutex::unlock() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
-    std::vector<std::shared_ptr<MutexMetadata>> list;
+static bool NamedAndMetadataListLessThan(const std::pair<std::string, std::shared_ptr<MutexMetadata>> &a,
+                                         const std::pair<std::string, std::shared_ptr<MutexMetadata>> &b) {
+    return strcasecmp(a.first.c_str(), b.first.c_str()) < 0;
+}
 
+std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
     std::call_once(g_mutex_metadata_list_mutex_initialise_once_flag, &InitMutexMetadataListMutex);
 
     LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
 
-    if (MutexFullMetadata *m = g_mutex_metadata_head) {
-        do {
-            list.push_back(std::shared_ptr<MutexMetadata>(m->shared_from_this(), &m->meta));
+    if (!g_is_mutex_metadata_list_valid) {
+        g_mutex_metadata_list.clear();
 
-            m = m->next;
-        } while (m != g_mutex_metadata_head);
+        if (MutexFullMetadata *m = g_mutex_metadata_head) {
+            do {
+                g_mutex_metadata_list.push_back(std::shared_ptr<MutexMetadata>(m->shared_from_this(), &m->meta));
+
+                m = m->next;
+            } while (m != g_mutex_metadata_head);
+        }
+
+        g_is_mutex_metadata_list_valid = true;
     }
 
-    return list;
+    return g_mutex_metadata_list;
 }
 
 //////////////////////////////////////////////////////////////////////////
