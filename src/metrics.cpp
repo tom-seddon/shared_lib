@@ -1,75 +1,39 @@
 #include <shared/system.h>
+#include <shared/system.h>
 #include <shared/metrics.h>
 #include <shared/debug.h>
 #include <memory>
 #include <vector>
 #include <string>
+#include <shared/mutex.h>
+#include <mutex>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static std::unique_ptr<std::vector<TimerDef *>> g_all_root_timer_defs;
+//static std::unique_ptr<std::vector<std::weak_ptr<MetricSet>>> g_all_metric_sets;
+static std::once_flag g_metric_sets_list_once_flag;
+static std::shared_ptr<Mutex> g_metric_sets_list_mutex;
+static MetricSet *g_metric_sets_list_head = nullptr;
+static std::shared_ptr<MetricSet> g_global_metric_set;
 
-static std::vector<TimerDef *> *GetAllRootTimerDefs() {
-    if (!g_all_root_timer_defs) {
-        g_all_root_timer_defs = std::make_unique<std::vector<TimerDef *>>();
-    }
+static void InitMetricSetsListGlobals() {
+    g_metric_sets_list_mutex = std::make_shared<Mutex>();
+    MUTEX_SET_NAME(*g_metric_sets_list_mutex, "MetricSets list");
+}
 
-    return g_all_root_timer_defs.get();
+static [[nodiscard]] UniqueLock<Mutex> LockMetricSetsList() {
+    std::call_once(g_metric_sets_list_once_flag, &InitMetricSetsListGlobals);
+
+    return UniqueLock<Mutex>(*g_metric_sets_list_mutex);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::vector<const TimerDef *> GetRootTimerDefs() {
-    const std::vector<TimerDef *> *defs = GetAllRootTimerDefs();
-    return std::vector<const TimerDef *>(defs->begin(), defs->end());
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-void ResetTimerDefs() {
-    for (TimerDef *def : *GetAllRootTimerDefs()) {
-        def->Reset();
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-TimerDef::TimerDef(std::string name_, TimerDef *parent)
+TimerDef::TimerDef(std::string name_, MetricSet *set)
     : name(std::move(name_))
-    , m_parent(parent) {
-    if (m_parent) {
-        m_parent->m_children.push_back(this);
-    } else {
-        if (!g_all_root_timer_defs) {
-            g_all_root_timer_defs = std::make_unique<std::vector<TimerDef *>>();
-        }
-
-        GetAllRootTimerDefs()->push_back(this);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-TimerDef::~TimerDef() {
-    // this can probably be arranged using (for example) a shared_ptr, with
-    // each TimerDef having its own reference, but this hardly seems worth the
-    // bother...
-
-    //    std::vector<TimerDef *> *list;
-    //    if(m_parent) {
-    //        list=&m_parent->m_children;
-    //    } else {
-    //        list=g_all_root_timer_defs.get();
-    //    }
-    //
-    //    auto it=std::find(list->begin(),list->end(),this);
-    //    ASSERT(it!=list->end());
-    //    list->erase(it);
+    , m_set(set) {
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -78,10 +42,6 @@ TimerDef::~TimerDef() {
 void TimerDef::Reset() {
     m_total_num_ticks = 0;
     m_num_samples = 0;
-
-    for (TimerDef *child_def : m_children) {
-        child_def->Reset();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -102,8 +62,8 @@ uint64_t TimerDef::GetNumSamples() const {
 //////////////////////////////////////////////////////////////////////////
 
 void TimerDef::AddTicks(uint64_t num_ticks) {
-    m_total_num_ticks.fetch_add(num_ticks, std::memory_order_acq_rel); //m_total_num_ticks += num_ticks;
-    m_num_samples.fetch_add(1, std::memory_order_acq_rel);             //++m_num_samples;
+    m_total_num_ticks.fetch_add(num_ticks, std::memory_order_acq_rel);
+    m_num_samples.fetch_add(1, std::memory_order_acq_rel);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -116,16 +76,209 @@ const TimerDef *TimerDef::GetParent() const {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-size_t TimerDef::GetNumChildren() const {
-    return m_children.size();
+std::vector<const TimerDef *> TimerDef::GetChildren() const {
+    LockGuard lock(m_set->m_mutex);
+
+    return {m_children.begin(), m_children.end()};
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-const TimerDef *TimerDef::GetChildByIndex(size_t index) const {
-    ASSERT(index < m_children.size());
-    return m_children[index];
+MetricSet::MetricSet(std::string name) {
+    this->SetName(std::move(name));
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<MetricSet> MetricSet::Create(std::string name) {
+    std::shared_ptr<MetricSet> set = Create2(std::move(name));
+
+    UniqueLock<Mutex> lock = LockMetricSetsList();
+
+    set->LinkIntoLockedList();
+
+    return set;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+MetricSet::~MetricSet() {
+    {
+        UniqueLock<Mutex> lock = LockMetricSetsList();
+
+        if (m_prev) {
+            m_prev->m_next = m_next;
+            m_prev = nullptr;
+            ASSERT(g_metric_sets_list_head != this);
+        } else {
+            ASSERT(g_metric_sets_list_head == this);
+            g_metric_sets_list_head = m_next;
+        }
+
+        if (m_next) {
+            m_next->m_prev = m_prev;
+            m_next = nullptr;
+        }
+
+        CheckLockedList();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+TimerDef *MetricSet::CreateTimerDef(std::string name) {
+    return this->CreateTimerDef2(std::move(name), nullptr);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+TimerDef *MetricSet::CreateTimerDef(std::string name, TimerDef *parent) {
+    ASSERT(parent);
+    ASSERT(parent->m_set == this);
+    return this->CreateTimerDef2(std::move(name), parent);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void MetricSet::ResetTimerDefs() {
+    LockGuard<Mutex> lock(m_mutex);
+
+    for (const std::unique_ptr<TimerDef> &def : m_all_timer_defs) {
+        def->Reset();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::vector<const TimerDef *> MetricSet::GetRootTimerDefs() const {
+    LockGuard<Mutex> lock(m_mutex);
+
+    return m_root_timer_defs;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::string MetricSet::GetName() const {
+    LockGuard<Mutex> lock(m_mutex);
+
+    return m_name;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void MetricSet::SetName(std::string name) {
+    LockGuard<Mutex> lock(m_mutex);
+
+    m_name = std::move(name);
+
+    MUTEX_SET_NAME(m_mutex, "MetricSet " + m_name);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+TimerDef *MetricSet::CreateTimerDef2(std::string name, TimerDef *parent) {
+    auto def = new TimerDef(std::move(name), this);
+    auto unique_def = std::unique_ptr<TimerDef>(def);
+
+    LockGuard<Mutex> lock(m_mutex);
+
+    if (!parent) {
+        m_root_timer_defs.push_back(def);
+    } else {
+        def->m_parent = parent;
+        parent->m_children.push_back(def);
+    }
+
+    m_all_timer_defs.push_back(std::move(unique_def));
+
+    return def;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<MetricSet>> MetricSet::GetAll() {
+    UniqueLock<Mutex> lock = LockMetricSetsList();
+
+    //CheckList();
+
+    std::vector<std::shared_ptr<MetricSet>> all_sets;
+    for (MetricSet *set = g_metric_sets_list_head; set; set = set->m_next) {
+        if (std::shared_ptr<MetricSet> shared = set->shared_from_this()) {
+            all_sets.push_back(std::move(shared));
+        }
+    }
+
+    return all_sets;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<MetricSet> MetricSet::GetGlobal() {
+    UniqueLock<Mutex> lock = LockMetricSetsList();
+
+    if (!g_global_metric_set) {
+        g_global_metric_set = Create2("Globals");
+
+        g_global_metric_set->LinkIntoLockedList();
+    }
+
+    return g_global_metric_set;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void MetricSet::CheckLockedList() {
+    for (MetricSet *set = g_metric_sets_list_head; set; set = set->m_next) {
+        if (set->m_prev) {
+            ASSERT(set->m_prev->m_next == set);
+        } else {
+            ASSERT(set == g_metric_sets_list_head);
+        }
+
+        if (set->m_next) {
+            ASSERT(set->m_next->m_prev == set);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void MetricSet::LinkIntoLockedList() {
+    m_next = g_metric_sets_list_head;
+    if (m_next) {
+        ASSERT(!m_next->m_prev);
+        m_next->m_prev = this;
+    }
+
+    g_metric_sets_list_head = this;
+
+    CheckLockedList();
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<MetricSet> MetricSet::Create2(std::string name) {
+    auto set = new MetricSet(std::move(name));
+
+    // Ugh, but... private constructor...
+    auto set_shared = std::shared_ptr<MetricSet>(set);
+
+    return set_shared;
 }
 
 //////////////////////////////////////////////////////////////////////////
