@@ -341,11 +341,6 @@ void Mutex::unlock() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static bool NamedAndMetadataListLessThan(const std::pair<std::string, std::shared_ptr<MutexMetadata>> &a,
-                                         const std::pair<std::string, std::shared_ptr<MutexMetadata>> &b) {
-    return strcasecmp(a.first.c_str(), b.first.c_str()) < 0;
-}
-
 std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
     std::call_once(g_mutex_metadata_list_mutex_initialise_once_flag, &InitMutexMetadataListMutex);
 
