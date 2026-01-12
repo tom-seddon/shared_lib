@@ -41,7 +41,7 @@ static void EnsureMetricsGlobalsInitialised() {
     std::call_once(g_metric_sets_list_once_flag, &InitMetricSetsListGlobals);
 }
 
-static [[nodiscard]] UniqueLock<Mutex> LockMetricSetsList() {
+[[nodiscard]] static UniqueLock<Mutex> LockMetricSetsList() {
     EnsureMetricsGlobalsInitialised();
 
     return UniqueLock<Mutex>(g_metrics->metric_sets_list_mutex);
