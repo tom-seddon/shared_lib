@@ -38,9 +38,12 @@ struct MutexStats {
 
     bool ever_locked = false;
 
-    std::string name;
-
     MutexStats();
+};
+
+struct MutexDetails {
+    std::string name;
+    MutexStats stats;
 };
 
 struct MutexMetadata {
@@ -53,7 +56,7 @@ struct MutexMetadata {
     MutexMetadata(MutexMetadata &&) = delete;
     MutexMetadata &operator=(MutexMetadata &&) = delete;
 
-    virtual void GetStats(MutexStats *stats) const = 0;
+    virtual void GetDetails(MutexDetails *details) const = 0;
     virtual void RequestReset() = 0;
     virtual uint8_t GetInterestingEvents() const = 0;
     virtual void SetInterestingEvents(uint8_t events) = 0;
@@ -80,7 +83,12 @@ class Mutex {
     MutexMetadata *GetMutableMetadata();
     const MutexMetadata *GetMetadata() const;
 
+    // the returned change counter will never be 0.
+    static uint64_t GetMetadataChangeCounter();
+
+    // there's a possible race condition, but it doesn't really matter. Metadata changes aren't intended to be a regular occurrence.
     static std::vector<std::shared_ptr<MutexMetadata>> GetAllMetadata();
+
     static uint64_t GetNameOverheadTicks();
 
     // If true, assume that try_lock is effectively free when it succeeds.

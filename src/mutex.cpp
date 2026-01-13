@@ -22,10 +22,11 @@
 struct MutexMetadataImpl : public MutexMetadata {
     std::mutex mutex;
 
-    // this->stats.name is null, and this->stats.num_try_locks is bogus. They're
-    // filled out when the data is copied by GetStats.
+    // num_try_locks and ever_locked values are both bogus. The caller's copy is filled out correctly on demand by GetDetails.
     MutexStats stats;
     std::atomic<bool> reset{false};
+
+    std::atomic<bool> ever_locked{false};
 
     // A try_lock needs accounting for even if the mutex ends up not taken.
     std::atomic<uint64_t> num_try_locks{0};
@@ -38,7 +39,7 @@ struct MutexMetadataImpl : public MutexMetadata {
     ~MutexMetadataImpl();
 
     void RequestReset() override;
-    void GetStats(MutexStats *stats) const override;
+    void GetDetails(MutexDetails *details) const override;
     uint8_t GetInterestingEvents() const override;
     void SetInterestingEvents(uint8_t events) override;
 
@@ -57,12 +58,19 @@ struct MutexFullMetadata : public std::enable_shared_from_this<MutexFullMetadata
     std::shared_ptr<std::mutex> metadata_list_mutex;
 };
 
-static std::shared_ptr<std::mutex> g_mutex_metadata_list_mutex;
 static std::once_flag g_mutex_metadata_list_mutex_initialise_once_flag;
+static std::shared_ptr<std::mutex> g_mutex_metadata_list_mutex; //shared_ptr() is constexpr
 static std::atomic<uint64_t> g_mutex_name_overhead_ticks{0};
 static std::atomic<bool> g_assume_free_uncontended_locks{false};
+
+// controlled by g_mutex_metadata_list_mutex
 static std::vector<std::shared_ptr<MutexMetadata>> g_mutex_metadata_list;
-static bool g_is_mutex_metadata_list_valid = false;
+
+// change counter last time g_mutex_metadata_list was regenerated. controlled by g_mutex_metadata_list_mutex.
+static uint64_t g_mutex_metadata_list_last_change_counter = 0;
+
+// current change counter. controlled by g_mutex_metadata_list_mutex
+static uint64_t g_mutex_metadata_list_change_counter = 1;
 
 static MutexFullMetadata *g_mutex_metadata_head;
 
@@ -71,10 +79,14 @@ static void InitMutexMetadataListMutex() {
     g_mutex_metadata_list_mutex = std::make_shared<std::mutex>();
 }
 
+static void EnsureMutexMetadataListInitialised() {
+    std::call_once(g_mutex_metadata_list_mutex_initialise_once_flag, &InitMutexMetadataListMutex);
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void CheckMetadataList() {
+static void CheckLockedMetadataList() {
     if (MutexFullMetadata *m = g_mutex_metadata_head) {
         do {
             ASSERT(m->prev->next == m);
@@ -88,8 +100,8 @@ static void CheckMetadataList() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void InvalidateMetadataList() {
-    g_is_mutex_metadata_list_valid = false;
+static void InvalidateLockedMetadataList() {
+    ++g_mutex_metadata_list_change_counter;
 
     // don't let any control blocks hang around unnecessarily.
     g_mutex_metadata_list.clear();
@@ -124,6 +136,7 @@ MutexMetadataImpl::~MutexMetadataImpl() {
 //////////////////////////////////////////////////////////////////////////
 
 void MutexMetadataImpl::RequestReset() {
+    // TODO: a little ill-advised, as it's not protected by any kind of lock! But it'll just about hang together.
     this->stats = {};
     this->reset.store(true, std::memory_order_release);
 }
@@ -131,16 +144,18 @@ void MutexMetadataImpl::RequestReset() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-void MutexMetadataImpl::GetStats(MutexStats *stats_) const {
-    *stats_ = this->stats;
+void MutexMetadataImpl::GetDetails(MutexDetails *details) const {
+    details->stats = this->stats;
 
-    stats_->num_try_locks = this->num_try_locks.load(std::memory_order_acquire);
+    details->stats.num_try_locks = this->num_try_locks.load(std::memory_order_acquire);
+
+    details->stats.ever_locked = this->ever_locked.load(std::memory_order_acquire);
 
     {
         uint64_t start_ticks = GetCurrentTickCount();
 
         this->name_mutex.lock_shared();
-        stats_->name = this->name;
+        details->name = this->name;
         this->name_mutex.unlock_shared();
 
         g_mutex_name_overhead_ticks.fetch_add(GetCurrentTickCount() - start_ticks, std::memory_order_acq_rel);
@@ -177,7 +192,7 @@ void MutexMetadataImpl::Reset() {
 
 Mutex::Mutex()
     : m_metadata(std::make_shared<MutexFullMetadata>()) {
-    std::call_once(g_mutex_metadata_list_mutex_initialise_once_flag, &InitMutexMetadataListMutex);
+    EnsureMutexMetadataListInitialised();
 
     m_meta = &m_metadata.get()->meta;
 
@@ -198,8 +213,8 @@ Mutex::Mutex()
         m_metadata->next->prev = m_metadata.get();
     }
 
-    InvalidateMetadataList();
-    CheckMetadataList();
+    InvalidateLockedMetadataList();
+    CheckLockedMetadataList();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -223,8 +238,8 @@ Mutex::~Mutex() {
 
         m_metadata->mutex = nullptr;
 
-        InvalidateMetadataList();
-        CheckMetadataList();
+        InvalidateLockedMetadataList();
+        CheckLockedMetadataList();
     }
 }
 
@@ -293,7 +308,7 @@ void Mutex::lock() {
         m_meta->Reset();
     }
 
-    m_meta->stats.ever_locked = true;
+    m_meta->ever_locked.store(true, std::memory_order_release);
     m_meta->stats.total_lock_wait_ticks += lock_wait_ticks;
 
     if (lock_wait_ticks < m_meta->stats.min_lock_wait_ticks) {
@@ -341,12 +356,23 @@ void Mutex::unlock() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
-    std::call_once(g_mutex_metadata_list_mutex_initialise_once_flag, &InitMutexMetadataListMutex);
+uint64_t Mutex::GetMetadataChangeCounter() {
+    EnsureMutexMetadataListInitialised();
 
     LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
 
-    if (!g_is_mutex_metadata_list_valid) {
+    return g_mutex_metadata_list_change_counter;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
+    EnsureMutexMetadataListInitialised();
+
+    LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
+
+    if (g_mutex_metadata_list_last_change_counter != g_mutex_metadata_list_change_counter) {
         g_mutex_metadata_list.clear();
 
         if (MutexFullMetadata *m = g_mutex_metadata_head) {
@@ -357,7 +383,7 @@ std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
             } while (m != g_mutex_metadata_head);
         }
 
-        g_is_mutex_metadata_list_valid = true;
+        g_mutex_metadata_list_last_change_counter = g_mutex_metadata_list_change_counter;
     }
 
     return g_mutex_metadata_list;
