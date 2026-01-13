@@ -44,7 +44,12 @@ static void EnsureMetricsGlobalsInitialised() {
 [[nodiscard]] static UniqueLock<Mutex> LockMetricSetsList() {
     EnsureMetricsGlobalsInitialised();
 
-    return UniqueLock<Mutex>(g_metrics->metric_sets_list_mutex);
+    if (g_metrics) {
+        return UniqueLock<Mutex>(g_metrics->metric_sets_list_mutex);
+    } else {
+        // Global initialization order fiasco!
+        return UniqueLock<Mutex>();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -160,21 +165,25 @@ MetricSet::~MetricSet() {
     {
         UniqueLock<Mutex> lock = LockMetricSetsList();
 
-        if (m_prev) {
-            m_prev->m_next = m_next;
-            m_prev = nullptr;
-            ASSERT(g_metrics->metric_sets_list_head != this);
+        if (g_metrics) {
+            if (m_prev) {
+                m_prev->m_next = m_next;
+                m_prev = nullptr;
+                ASSERT(g_metrics->metric_sets_list_head != this);
+            } else {
+                ASSERT(g_metrics->metric_sets_list_head == this);
+                g_metrics->metric_sets_list_head = m_next;
+            }
+
+            if (m_next) {
+                m_next->m_prev = m_prev;
+                m_next = nullptr;
+            }
+
+            CheckLockedList();
         } else {
-            ASSERT(g_metrics->metric_sets_list_head == this);
-            g_metrics->metric_sets_list_head = m_next;
+            // Global initialization order disaster!
         }
-
-        if (m_next) {
-            m_next->m_prev = m_prev;
-            m_next = nullptr;
-        }
-
-        CheckLockedList();
     }
 }
 
