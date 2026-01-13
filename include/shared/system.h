@@ -419,7 +419,8 @@ uint64_t GetCurrentTickCount(void);
 double GetSecondsFromTicks(uint64_t ticks);
 double GetSecondsPerTick();
 
-#define GetMillisecondsFromTicks(TICKS) (GetSecondsFromTicks(TICKS) * 1000.)
+#define GetMillisecondsFromTicks(TICKS) (GetSecondsFromTicks(TICKS) * 1e3)
+#define GetMicrosecondsFromTicks(TICKS) (GetSecondsFromTicks(TICKS) * 1e6)
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
