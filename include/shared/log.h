@@ -200,7 +200,7 @@ struct LogSet {
     Log &e;
 
     LogSet() = delete;
-    //LogSet(Log &i, Log &w, Log &e);
+    LogSet(Log &i, Log &w, Log &e);
     LogSet(const LogSet &src) = delete;
     LogSet &operator=(const LogSet &src) = delete;
     LogSet(LogSet &&src) = delete;
