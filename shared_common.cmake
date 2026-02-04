@@ -35,6 +35,9 @@ if(${CMAKE_C_COMPILER_ID} MATCHES "GNU|Clang")
   if(${CMAKE_C_COMPILER_ID} MATCHES "GNU")
     # barf on unused [[nodiscard]].
     add_definitions("-Werror=unused-result")
+
+    # moan about missing C++ overrides.
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsuggest-override")
   endif()
 
   if(${CMAKE_C_COMPILER_ID} MATCHES "Clang")
