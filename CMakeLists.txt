@@ -9,8 +9,10 @@ endif()
 ##########################################################################
 ##########################################################################
 
-check_cxx_source_compiles("#include <string.h>
-typedef decltype(&strlcpy) T;int main(void){return 0;}" HAVE_STRLCPY)
+check_c_source_compiles("
+#define _GNU_SOURCE
+#include <string.h>
+int main(void){char a[10],b[]=\"fred\";strlcpy(a,b,4);}" HAVE_STRLCPY)
 message(STATUS "strlcpy exists: ``${HAVE_STRLCPY}''")
 
 ##########################################################################
