@@ -54,18 +54,18 @@ int main(int argc, char *argv[]) {
     TEST_EQ_SS(PathGetExtension("a.b/"), "");
     TEST_EQ_SS(PathGetExtension("a"), "");
 
-    TEST_TRUE(argc >= 3);
-    TEST_TRUE(PathIsFolderOnDisk(argv[2]));
-    TEST_FALSE(PathIsFileOnDisk(argv[2], nullptr, nullptr));
+    TEST_TRUE(PathIsFolderOnDisk(TEST_PATH_SOURCE_FOLDER));
+    TEST_FALSE(PathIsFileOnDisk(TEST_PATH_SOURCE_FOLDER, nullptr, nullptr));
 
-    std::string file = PathJoined(argv[2], PathGetName(__FILE__));
+    std::string file = PathJoined(TEST_PATH_SOURCE_FOLDER, PathGetName(__FILE__));
     TEST_TRUE(PathIsFileOnDisk(file, nullptr, nullptr));
     TEST_FALSE(PathIsFolderOnDisk(file));
 
     PathGlob(PathGetFolder(__FILE__), [](const std::string &path, bool is_folder) -> void {
         (void)is_folder;
-        TEST_NE_SS(path, ".");
-        TEST_NE_SS(path, "..");
+        std::string name = PathGetName(path);
+        TEST_NE_SS(name, ".");
+        TEST_NE_SS(name, "..");
     });
 }
 

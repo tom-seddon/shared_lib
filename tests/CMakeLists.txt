@@ -46,6 +46,7 @@ endif()
 
 add_executable(test_path test_path.cpp)
 target_link_libraries(test_path PRIVATE shared_lib)
+target_compile_definitions(test_path PRIVATE TEST_PATH_SOURCE_FOLDER="${CMAKE_CURRENT_SOURCE_DIR}")
 add_test(
   NAME shared/test_path
-  COMMAND $<TARGET_FILE:test_path> $<TARGET_FILE:test_path> ${CMAKE_CURRENT_SOURCE_DIR})
+  COMMAND $<TARGET_FILE:test_path> ${TEST_PATH_ARGUMENTS})
