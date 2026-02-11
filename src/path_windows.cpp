@@ -31,6 +31,18 @@ bool PathGlob(const std::string &folder, std::function<void(const std::string &p
     HANDLE h = FindFirstFileW(spec.c_str(), &fd);
     if (h != INVALID_HANDLE_VALUE) {
         do {
+            if (fd.cFileName[0] == '.') {
+                if (fd.cFileName[1] == 0) {
+                    // skip ".".
+                    continue;
+                } else if (fd.cFileName[1] == '.') {
+                    if (fd.cFileName[2] == 0) {
+                        // skip "..".
+                        continue;
+                    }
+                }
+            }
+
             std::string path = PathJoined(folder, GetUTF8String(fd.cFileName));
             bool is_folder = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
