@@ -61,6 +61,12 @@ int main(int argc, char *argv[]) {
     std::string file = PathJoined(argv[2], PathGetName(__FILE__));
     TEST_TRUE(PathIsFileOnDisk(file, nullptr, nullptr));
     TEST_FALSE(PathIsFolderOnDisk(file));
+
+    PathGlob(PathGetFolder(__FILE__), [](const std::string &path, bool is_folder) -> void {
+        (void)is_folder;
+        TEST_NE_SS(path, ".");
+        TEST_NE_SS(path, "..");
+    });
 }
 
 //////////////////////////////////////////////////////////////////////////

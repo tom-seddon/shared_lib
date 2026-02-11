@@ -22,6 +22,18 @@ bool PathGlob(const std::string &folder,
 
     struct dirent *de;
     while ((de = readdir(d)) != NULL) {
+        if (de->d_name[0] == '.') {
+            if (de->d_name[1] == 0) {
+                // Ignore ".".
+                continue;
+            } else if (de->d_name[1] == '.') {
+                if (de->d_name[2] == 0) {
+                    // Ignore "..".
+                    continue;
+                }
+            }
+        }
+
         std::string path = PathJoined(folder, de->d_name);
 
         bool is_folder = PathIsFolderOnDisk(path);
