@@ -181,7 +181,11 @@ int TestPointer(int got_null, const char *got_str, int want_not_null, const char
 int TestEqSS(const char *got, const char *got_str, const char *wanted, const char *wanted_str, const char *file, int line);
 int TestEqSS(const std::string &got, const char *got_str, const std::string &wanted, const char *wanted_str, const char *file, int line);
 
+int TestNeSS(const char *got, const char *got_str, const char *unwanted, const char *unwanted_str, const char *file, int line);
+int TestNeSS(const std::string &got, const char *got_str, const std::string &unwanted, const char *unwanted_str, const char *file, int line);
+
 #define TEST_EQ_SS(GOT, WANTED) TEST(TestEqSS((GOT), #GOT, (WANTED), #WANTED, __FILE__, __LINE__))
+#define TEST_NE_SS(GOT, UNWANTED) TEST(TestNeSS((GOT), #GOT, (UNWANTED), #UNWANTED, __FILE__, __LINE__))
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

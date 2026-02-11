@@ -307,6 +307,34 @@ int TestEqSS(const std::string &got, const char *got_str, const std::string &wan
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+int TestNeSS(const char *got, const char *got_str, const char *unwanted, const char *unwanted_str, const char *file, int line) {
+    if ((!got && !unwanted) ||
+        (got && unwanted && strcmp(got, unwanted) == 0)) {
+        TestFailed(file, line, NULL); //,(TestFailArgs){.got_str=got,.wanted_str=wanted});
+
+        LOGF(TESTING, "  Unwanted expr: %s\n", unwanted_str);
+        LOGF(TESTING, "       Got expr: %s\n", got_str);
+        LOGF(TESTING, "\n");
+
+        Log tmp("", LOG(TESTING));
+
+        tmp.s("           Value: \"");
+        LogStringPrintable(&tmp, unwanted);
+        tmp.s("\"\n");
+
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+int TestNeSS(const std::string &got, const char *got_str, const std::string &unwanted, const char *unwanted_str, const char *file, int line) {
+    return TestNeSS(got.c_str(), got_str, unwanted.c_str(), unwanted_str, file, line);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 static int DoHighlightValue(size_t offset, void *data) {
     return offset == *(size_t *)data;
 }
