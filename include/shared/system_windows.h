@@ -33,15 +33,19 @@ int backtrace(void **array, int size);
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::string GetUTF8String(const wchar_t *str);
-std::string GetUTF8String(const std::wstring &str);
+std::string GetByteString(const wchar_t *str, int code_page);
+std::string GetByteString(const std::wstring &str, int code_page);
 
-// Input string is UTF-8.
-std::wstring GetWideString(const char *str);
-std::wstring GetWideString(const std::string &str);
+static inline std::string GetUTF8String(const wchar_t *str) {
+    return GetByteString(str, CP_UTF8);
+}
 
-// Input string is in thread's current code page. Intended for use with argv.
-std::string GetUTF8StringFromThreadACPString(const char *str);
+static inline std::string GetUTF8String(const std::wstring &str) {
+    return GetByteString(str, CP_UTF8);
+}
+
+std::wstring GetWideString(const char *str, int code_page = CP_UTF8);
+std::wstring GetWideString(const std::string &str, int code_Spage = CP_UTF8);
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

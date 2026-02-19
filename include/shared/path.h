@@ -80,7 +80,7 @@ int PathCompare(const std::string &a, const std::string &b);
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-/* Retrieve names of all files in the given folder. (This isn't
+/* Retrieve names of all entries in the given folder. (This isn't
  * actually a glob, as you don't get to specify a mask.) */
 bool PathGlob(const std::string &folder, std::function<void(const std::string &path, bool is_folder)> fun);
 
