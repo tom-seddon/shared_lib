@@ -244,7 +244,7 @@ void LogStackTrace(Log *log);
 
 #define LOG__IS_ENABLED(X) ((X).enabled)
 
-#define LOG(X) g_log_##X
+#define LOG(X) CONCAT2(g_log_, X)
 
 #define LOG_EXTERN(X) extern Log LOG(X)
 
