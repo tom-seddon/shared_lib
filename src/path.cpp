@@ -94,6 +94,16 @@ std::string PathJoined(const std::string &a, const std::string &b) {
         return b;
     }
 
+#if SYSTEM_WINDOWS
+    if (b.size() >= 2) {
+        // Test for drive path - B:\\fred or B:fred or whatever. No need to
+        // overthink. If there's any problems, they'll get caught later.
+        if (b[1] == ':') {
+            return b;
+        }
+    }
+#endif
+
     if (PathIsSeparatorChar(a.back())) {
         return a + b;
     } else {

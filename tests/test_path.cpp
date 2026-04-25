@@ -47,6 +47,12 @@ int main(int argc, char *argv[]) {
     TEST_EQ_SS(PathJoined("a", "/b"), "/b");
     TEST_EQ_SS(PathJoined("a/", "/b"), "/b");
 
+#if SYSTEM_WINDOWS
+    TEST_EQ_SS(PathJoined("a", "D:\\test"), "D:\\test");
+    TEST_EQ_SS(PathJoined("a", "D:/test"), "D:/test");
+    TEST_EQ_SS(PathJoined("a", "D:test"), "D:test");
+#endif
+
     TEST_EQ_SS(PathGetExtension("a.b"), ".b");
     TEST_EQ_SS(PathGetExtension("a.b/c.d"), ".d");
     TEST_EQ_SS(PathGetExtension("a.b/c.d.e"), ".e");
