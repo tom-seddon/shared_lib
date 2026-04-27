@@ -90,19 +90,9 @@ std::string PathJoined(const std::string &a, const std::string &b) {
         return a;
     }
 
-    if (PathIsSeparatorChar(b[0])) {
+    if (PathIsAbsolute(b)) {
         return b;
     }
-
-#if SYSTEM_WINDOWS
-    if (b.size() >= 2) {
-        // Test for drive path - B:\\fred or B:fred or whatever. No need to
-        // overthink. If there's any problems, they'll get caught later.
-        if (b[1] == ':') {
-            return b;
-        }
-    }
-#endif
 
     if (PathIsSeparatorChar(a.back())) {
         return a + b;
@@ -195,3 +185,55 @@ int PathCompare(const std::string &a, const std::string &b) {
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
+
+bool PathIsAbsolute(const std::string &path) {
+    if (!path.empty()) {
+        if (PathIsSeparatorChar(path[0])) {
+            return true;
+        }
+
+#if SYSTEM_WINDOWS
+        if (path.size() >= 2) {
+            // Test for drive path - B:\\fred or B:fred or whatever. No need to
+            // overthink. If there's any problems, they'll get caught later.
+            if (path[1] == ':') {
+                return true;
+            }
+        }
+#endif
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+bool PathIsFullySpecified(const std::string &path) {
+#if SYSTEM_WINDOWS
+
+    if (path.size() >= 3) {
+        // Don't allow B:fred and the like. The actual path then depends on the
+        // process's state.
+        if (path[1] == ':' && PathIsSeparatorChar(path[2])) {
+            return true;
+        }
+
+        // Anything starting with \\ is considered fully specified.
+        if (path[0] == '\\' && path[1] == '\\') {
+            return true;
+        }
+    }
+
+#else
+
+    if (!path.empty()) {
+        if (PathIsSeparatorChar(path[0])) {
+            return true;
+        }
+    }
+
+#endif
+
+    return false;
+}
