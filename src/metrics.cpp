@@ -168,7 +168,6 @@ MetricSet::~MetricSet() {
         if (g_metrics) {
             if (m_prev) {
                 m_prev->m_next = m_next;
-                m_prev = nullptr;
                 ASSERT(g_metrics->metric_sets_list_head != this);
             } else {
                 ASSERT(g_metrics->metric_sets_list_head == this);
@@ -177,8 +176,10 @@ MetricSet::~MetricSet() {
 
             if (m_next) {
                 m_next->m_prev = m_prev;
-                m_next = nullptr;
             }
+
+            m_next = nullptr;
+            m_prev = nullptr;
 
             CheckLockedList();
         } else {
