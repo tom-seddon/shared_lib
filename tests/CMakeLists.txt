@@ -33,6 +33,7 @@ add_shared_test(test_file_io)
 target_compile_definitions(test_file_io PRIVATE
   -DTEST_FILES_FOLDER="${CMAKE_CURRENT_BINARY_DIR}")
 add_shared_test(test_guid)
+add_shared_test(test_strings)
 
 ##########################################################################
 ##########################################################################
