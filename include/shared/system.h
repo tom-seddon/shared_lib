@@ -88,6 +88,8 @@ extern "C" void __nop(void);
 #define CPU_X86 1
 #elif (defined _M_X64)
 #define CPU_X64 1
+#elif (defined _M_ARM64) || (defined _M_ARM64EC)
+#define CPU_ARM 1
 #else
 #error Unknown VC++ CPU
 #endif
