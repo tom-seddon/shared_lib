@@ -30,3 +30,4 @@
 #undef NOVERLOAD
 
 #undef EINTERNAL
+#undef EFALLTHROUGH
