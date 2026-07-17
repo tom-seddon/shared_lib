@@ -81,6 +81,35 @@ inline const char *GetEnumName(T value) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+class EnumTraitsBase {
+  public:
+    EnumTraitsBase();
+    virtual ~EnumTraitsBase() = default;
+
+    EnumTraitsBase(const EnumTraitsBase &) = delete;
+    EnumTraitsBase &operator=(const EnumTraitsBase &) = delete;
+    EnumTraitsBase(EnumTraitsBase &&) = delete;
+    EnumTraitsBase &operator=(EnumTraitsBase &&) = delete;
+
+    virtual const char *GetEnumName() const = 0;
+    virtual bool IsSigned() const = 0;
+    virtual size_t GetSizeBytes() const = 0;
+    virtual bool IsSerializable() const = 0;
+
+    // If signed, the value will have been sign-extended from its original width; if unsigned, zero-extended. Check IsSigned() and GetSizeBytes() for more info.
+    virtual void ForEach(void (*fn)(uint64_t value, const char *name, void *context), void *fn_context) const = 0;
+
+    static const EnumTraitsBase *GetFirst();
+    const EnumTraitsBase *GetNext() const;
+
+  protected:
+  private:
+    const EnumTraitsBase *m_next_enum_traits = nullptr;
+};
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 #ifdef NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE
 
 template <class T>

@@ -1,3 +1,5 @@
+#include <type_traits>
+
 #if EINTERNAL
 #define EPREFIX static
 #else
@@ -15,26 +17,27 @@
 
 #define EEND_EXTRA()
 
-#define EBEGIN__BODY(TYPE)                                                                                                           \
-    const typename EnumTraits<ENAME>::GetNameFn EnumTraits<ENAME>::GET_NAME_FN = &CONCAT3(Get, ENAME, EnumName);                     \
-    const char EnumTraits<ENAME>::NAME[] = STRINGIZE(ENAME);                                                                         \
-    static const char *CONCAT3(InternalGet, ENAME, EnumName)(TYPE value, void (*fn)(TYPE, const char *, void *), void *fn_context) { \
-        if (fn) {                                                                                                                    \
-            goto fall_through;                                                                                                       \
-        }                                                                                                                            \
-                                                                                                                                     \
-        switch (value) {                                                                                                             \
+#define EBEGIN__BODY(TYPE)                                                                                                               \
+    const typename EnumTraits<ENAME>::GetNameFn EnumTraits<ENAME>::GET_NAME_FN = &CONCAT3(Get, ENAME, EnumName);                         \
+    const char EnumTraits<ENAME>::NAME[] = STRINGIZE(ENAME);                                                                             \
+    static const char *CONCAT3(InternalGet, ENAME, EnumName)(TYPE value, void (*fn)(uint64_t, const char *, void *), void *fn_context) { \
+        static_assert(sizeof(TYPE) <= sizeof(uint64_t));                                                                                 \
+        if (fn) {                                                                                                                        \
+            goto fall_through;                                                                                                           \
+        }                                                                                                                                \
+                                                                                                                                         \
+        switch (value) {                                                                                                                 \
         fall_through:
 
 #define EBEGIN() EBEGIN__BODY(int)
 #define EBEGIN_DERIVED(BASE_NAME) EBEGIN__BODY(BASE_NAME)
 
-#define EN_INTERNAL(NAME, STR)            \
-    case (NAME):                          \
-        if (!fn) {                        \
-            return (STR);                 \
-        }                                 \
-        (*fn)((NAME), (STR), fn_context); \
+#define EN_INTERNAL(NAME, STR)                               \
+    case (NAME):                                             \
+        if (!fn) {                                           \
+            return (STR);                                    \
+        }                                                    \
+        (*fn)((uint64_t)(int64_t)(NAME), (STR), fn_context); \
         EFALLTHROUGH;
 
 #define EN(NAME) EN_INTERNAL(NAME, #NAME)
@@ -59,9 +62,32 @@
                                                                                                                \
         return nullptr; /* only gets here if calling with a callback */                                        \
         }                                                                                                      \
+                                                                                                               \
         EPREFIX UNUSED const char *CONCAT3(Get, ENAME, EnumName)(typename EnumTraits<ENAME>::BaseType value) { \
             return CONCAT3(InternalGet, ENAME, EnumName)(value, nullptr, nullptr);                             \
         }                                                                                                      \
+                                                                                                               \
+        const char *EnumTraits<ENAME>::GetEnumName() const {                                                   \
+            return NAME;                                                                                       \
+        }                                                                                                      \
+                                                                                                               \
+        bool EnumTraits<ENAME>::IsSigned() const {                                                             \
+            return std::is_signed<BaseType>::value;                                                            \
+        }                                                                                                      \
+                                                                                                               \
+        size_t EnumTraits<ENAME>::GetSizeBytes() const {                                                       \
+            return sizeof(ENAME);                                                                              \
+        }                                                                                                      \
+                                                                                                               \
+        bool EnumTraits<ENAME>::IsSerializable() const {                                                       \
+            return IS_SERIALIZABLE;                                                                            \
+        }                                                                                                      \
+                                                                                                               \
+        void EnumTraits<ENAME>::ForEach(void (*fn)(uint64_t, const char *, void *), void *fn_context) const {  \
+            CONCAT3(InternalGet, ENAME, EnumName)({}, fn, fn_context);                                         \
+        }                                                                                                      \
+                                                                                                               \
+        const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;                                                   \
                                                                                                                \
         EEND_EXTRA()
 
@@ -85,4 +111,3 @@
 #define NEND() \
     }          \
     }
-	
