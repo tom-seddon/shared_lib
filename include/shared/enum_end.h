@@ -13,6 +13,7 @@
 #undef EN
 #undef ENV
 #undef EPN
+#undef EPN_BIT_FLAG
 #undef EPNV
 #undef EQN
 #undef EQNV

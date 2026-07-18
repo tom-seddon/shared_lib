@@ -81,6 +81,34 @@ inline const char *GetEnumName(T value) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+class EnumTraitsBase;
+
+struct EnumTraitsData {
+    const EnumTraitsData *next = nullptr;
+    bool is_signed = false;
+    size_t size_bytes = 0;
+    const char *serializable_hash = nullptr;
+    int eend_line = -1;
+    const char *eend_file = nullptr;
+};
+
+struct EnumValue {
+    const EnumTraitsBase *traits = nullptr;
+    const char *name = nullptr;
+
+    // If the enum type is signed, the value will have been sign-extended from
+    // its original width; if unsigned, zero-extended. Check IsSigned() and
+    // GetSizeBytes() for the owning traits for more info.
+    uint64_t value = 0;
+
+    int8_t bit_shift = -1;                    //>=0 if a bitfield
+    uint8_t bit_width = 0;                    //>0 if a bitfield
+    const EnumTraitsBase *bit_enum = nullptr; //if an enum
+
+    EnumValue(const EnumTraitsBase *traits, const char *name, uint64_t value);
+    EnumValue(const EnumTraitsBase *traits, const char *name, uint64_t value, int8_t bit_shift, uint8_t bit_width);
+};
+
 class EnumTraitsBase {
   public:
     EnumTraitsBase();
@@ -96,11 +124,10 @@ class EnumTraitsBase {
     virtual size_t GetSizeBytes() const = 0;
 
     virtual const char *GetSerializableHash() const = 0;
-    virtual int64_t GetEENDLine() const = 0;
+    virtual int GetEENDLine() const = 0;
     virtual const char *GetEENDFile() const = 0;
 
-    // If signed, the value will have been sign-extended from its original width; if unsigned, zero-extended. Check IsSigned() and GetSizeBytes() for more info.
-    virtual void ForEach(void (*fn)(uint64_t value, const char *name, const EnumTraitsBase *traits, void *context), void *fn_context) const = 0;
+    virtual void ForEach(void (*fn)(const EnumValue *value, void *context), void *fn_context) const = 0;
 
     static const EnumTraitsBase *GetFirst();
     const EnumTraitsBase *GetNext() const;
