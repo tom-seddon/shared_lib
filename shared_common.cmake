@@ -158,10 +158,13 @@ elseif(MSVC)
   string(REGEX REPLACE "[/-]RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   string(REGEX REPLACE "[/-]RTC(su|[1su])" "" CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 
-  # Rather important __cplusplus-related setting.
+  # Conformance settings.
   #
   # https://learn.microsoft.com/en-us/cpp/build/reference/zc-cplusplus?view=msvc-170
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus")
+  
+  # https://learn.microsoft.com/en-us/cpp/build/reference/zc-preprocessor?view=msvc-170
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:preprocessor")
 
   message(STATUS "CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
   message(STATUS "CMAKE_C_FLAGS = ${CMAKE_C_FLAGS}")
