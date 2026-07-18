@@ -40,13 +40,8 @@
         static const GetNameFn GET_NAME_FN;                                                   \
         static const char NAME[];                                                             \
         static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR);                  \
-        const char *GetEnumName() const override;                                             \
-        bool IsSigned() const override;                                                       \
-        size_t GetSizeBytes() const override;                                                 \
-        const char *GetSerializableHash() const override;                                     \
-        const char *GetEENDFile() const override;                                             \
-        int GetEENDLine() const override;                                                     \
         void ForEach(void (*fn)(const EnumValue *, void *), void *fn_context) const override; \
+        EnumTraits();                                                                         \
         static const EnumTraits<ENAME> s_traits;                                              \
     };
 

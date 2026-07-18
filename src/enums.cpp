@@ -47,7 +47,7 @@ EnumValue::EnumValue(const EnumTraitsBase *traits_, const char *name_, uint64_t 
 EnumTraitsBase::EnumTraitsBase() {
     ASSERT(!g_enums_list_fixed.load(std::memory_order_acquire));
 
-    m_next_enum_traits = g_first_enum_traits;
+    this->next = g_first_enum_traits;
     g_first_enum_traits = this;
 }
 
@@ -59,13 +59,6 @@ const EnumTraitsBase *EnumTraitsBase::GetFirst() {
 
     g_enums_list_fixed.store(true, std::memory_order_release);
     return g_first_enum_traits;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-const EnumTraitsBase *EnumTraitsBase::GetNext() const {
-    return m_next_enum_traits;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -89,7 +82,7 @@ struct CheckCountValueState {
 static void CheckCountValue(const EnumValue *value, void *context) {
     auto state = (CheckCountValueState *)context;
 
-    if (value->traits->IsSigned()) {
+    if (value->traits->is_signed) {
         if (state->seen_count) {
             ASSERT((int64_t)value < state->imax);
         } else {
@@ -142,7 +135,7 @@ static void PrintEnumValue(const EnumValue *value, void *context) {
 
     printf("    %s: ", value->name);
 
-    if (value->traits->IsSigned()) {
+    if (value->traits->is_signed) {
         printf("%" PRId64, (int64_t)value->value);
     } else {
         printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
@@ -157,24 +150,24 @@ void EnsureEnumsInitialised() {
     }
 
     bool all_good = true;
-    for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->GetNext()) {
+    for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
         // Check serializable hash.
-        if (const char *got_hash = traits->GetSerializableHash()) {
+        if (traits->serializable_hash) {
             std::string stuff;
             traits->ForEach(&GetAllValues, &stuff);
 
             char wanted_hash[SHA1::DIGEST_STR_SIZE];
             SHA1::HashBuffer(nullptr, wanted_hash, stuff.data(), stuff.size());
 
-            if (strcmp(wanted_hash, got_hash) != 0) {
+            if (strcmp(wanted_hash, traits->serializable_hash) != 0) {
                 char *msg;
                 asprintf(&msg,
                          PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
-                         traits->GetEENDFile(),
-                         traits->GetEENDLine(),
-                         traits->GetEnumName(),
+                         traits->eend_file,
+                         traits->eend_line,
+                         traits->name,
                          wanted_hash,
-                         got_hash);
+                         traits->serializable_hash);
 
                 fputs(msg, stdout);
 #if SYSTEM_WINDOWS
@@ -199,12 +192,12 @@ void EnsureEnumsInitialised() {
     (void)all_good;
     ASSERT(all_good);
 
-    for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->GetNext()) {
+    for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
         printf("%s: size=%zu signed=%s serializable=%s\n",
-               traits->GetEnumName(),
-               traits->GetSizeBytes(),
-               BOOL_STR(traits->IsSigned()),
-               BOOL_STR(traits->GetSerializableHash()));
+               traits->name,
+               traits->size_bytes,
+               BOOL_STR(traits->is_signed),
+               BOOL_STR(traits->serializable_hash));
 
         traits->ForEach(&PrintEnumValue, nullptr);
     }

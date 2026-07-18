@@ -83,15 +83,6 @@ inline const char *GetEnumName(T value) {
 
 class EnumTraitsBase;
 
-struct EnumTraitsData {
-    const EnumTraitsData *next = nullptr;
-    bool is_signed = false;
-    size_t size_bytes = 0;
-    const char *serializable_hash = nullptr;
-    int eend_line = -1;
-    const char *eend_file = nullptr;
-};
-
 struct EnumValue {
     const EnumTraitsBase *traits = nullptr;
     const char *name = nullptr;
@@ -111,6 +102,14 @@ struct EnumValue {
 
 class EnumTraitsBase {
   public:
+    const EnumTraitsBase *next = nullptr;
+    const char *name = nullptr;
+    bool is_signed = false;
+    size_t size_bytes = 0;
+    const char *serializable_hash = nullptr;
+    int eend_line = -1;
+    const char *eend_file = nullptr;
+
     EnumTraitsBase();
     virtual ~EnumTraitsBase() = default;
 
@@ -119,22 +118,12 @@ class EnumTraitsBase {
     EnumTraitsBase(EnumTraitsBase &&) = delete;
     EnumTraitsBase &operator=(EnumTraitsBase &&) = delete;
 
-    virtual const char *GetEnumName() const = 0;
-    virtual bool IsSigned() const = 0;
-    virtual size_t GetSizeBytes() const = 0;
-
-    virtual const char *GetSerializableHash() const = 0;
-    virtual int GetEENDLine() const = 0;
-    virtual const char *GetEENDFile() const = 0;
-
     virtual void ForEach(void (*fn)(const EnumValue *value, void *context), void *fn_context) const = 0;
 
     static const EnumTraitsBase *GetFirst();
-    const EnumTraitsBase *GetNext() const;
 
   protected:
   private:
-    const EnumTraitsBase *m_next_enum_traits = nullptr;
 };
 
 //////////////////////////////////////////////////////////////////////////

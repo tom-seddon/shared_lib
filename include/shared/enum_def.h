@@ -76,28 +76,13 @@
             return CONCAT3(InternalGet, ENAME, EnumName)(value, nullptr, nullptr);                             \
         }                                                                                                      \
                                                                                                                \
-        const char *EnumTraits<ENAME>::GetEnumName() const {                                                   \
-            return NAME;                                                                                       \
-        }                                                                                                      \
-                                                                                                               \
-        bool EnumTraits<ENAME>::IsSigned() const {                                                             \
-            return std::is_signed<BaseType>::value;                                                            \
-        }                                                                                                      \
-                                                                                                               \
-        size_t EnumTraits<ENAME>::GetSizeBytes() const {                                                       \
-            return sizeof(ENAME);                                                                              \
-        }                                                                                                      \
-                                                                                                               \
-        const char *EnumTraits<ENAME>::GetSerializableHash() const {                                           \
-            return SERIALIZABLE_HASH;                                                                          \
-        }                                                                                                      \
-                                                                                                               \
-        int EnumTraits<ENAME>::GetEENDLine() const {                                                           \
-            return EEND_LINE;                                                                                  \
-        }                                                                                                      \
-                                                                                                               \
-        const char *EnumTraits<ENAME>::GetEENDFile() const {                                                   \
-            return EEND_FILE;                                                                                  \
+        EnumTraits<ENAME>::EnumTraits() {                                                                      \
+            this->name = NAME;                                                                                 \
+            this->is_signed = std::is_signed<BaseType>::value;                                                 \
+            this->size_bytes = sizeof(ENAME);                                                                  \
+            this->serializable_hash = SERIALIZABLE_HASH;                                                       \
+            this->eend_line = EEND_LINE;                                                                       \
+            this->eend_file = EEND_FILE;                                                                       \
         }                                                                                                      \
                                                                                                                \
         void EnumTraits<ENAME>::ForEach(void (*fn)(const EnumValue *, void *), void *fn_context) const {       \
