@@ -26,29 +26,31 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
-#define EEND__BODY(SERIALIZABLE)                                                                   \
-    }                                                                                              \
-    ;                                                                                              \
-    typedef enum ENAME ENAME;                                                                      \
-                                                                                                   \
-    template <>                                                                                    \
-    struct EnumTraits<ENAME> : public EnumTraitsBase {                                             \
-        typedef ENAME EnumType;                                                                    \
-        typedef CONCAT2(ENAME, BaseType) BaseType;                                                 \
-        typedef const char *(*GetNameFn)(BaseType);                                                \
-        static const GetNameFn GET_NAME_FN;                                                        \
-        static const char NAME[];                                                                  \
-        static constexpr bool IS_SERIALIZABLE = (SERIALIZABLE);                                    \
-        const char *GetEnumName() const override;                                                  \
-        bool IsSigned() const override;                                                            \
-        size_t GetSizeBytes() const override;                                                      \
-        bool IsSerializable() const override;                                                      \
-        void ForEach(void (*fn)(uint64_t, const char *, void *), void *fn_context) const override; \
-        static const EnumTraits<ENAME> s_traits;                                                   \
+#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)                                                           \
+    }                                                                                                                      \
+    ;                                                                                                                      \
+    typedef enum ENAME ENAME;                                                                                              \
+                                                                                                                           \
+    template <>                                                                                                            \
+    struct EnumTraits<ENAME> : public EnumTraitsBase {                                                                     \
+        typedef ENAME EnumType;                                                                                            \
+        typedef CONCAT2(ENAME, BaseType) BaseType;                                                                         \
+        typedef const char *(*GetNameFn)(BaseType);                                                                        \
+        static const GetNameFn GET_NAME_FN;                                                                                \
+        static const char NAME[];                                                                                          \
+        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR);                                               \
+        const char *GetEnumName() const override;                                                                          \
+        bool IsSigned() const override;                                                                                    \
+        size_t GetSizeBytes() const override;                                                                              \
+        const char *GetSerializableHash() const override;                                                                  \
+        const char *GetEENDFile() const override;                                                                          \
+        int64_t GetEENDLine() const override;                                                                              \
+        void ForEach(void (*fn)(uint64_t, const char *, const EnumTraitsBase *, void *), void *fn_context) const override; \
+        static const EnumTraits<ENAME> s_traits;                                                                           \
     };
 
-#define EEND_SERIALIZABLE() EEND__BODY(true)
-#define EEND() EEND__BODY(false)
+#define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, true)
+#define EEND() EEND__BODY(nullptr, false)
 
 //#define EOVERLOAD() const char *GetEnumValueName(ENAME value);
 

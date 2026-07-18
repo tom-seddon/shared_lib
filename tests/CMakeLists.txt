@@ -28,6 +28,7 @@ add_shared_test(test_CommandLineParser)
 add_shared_test(test_log)
 add_shared_test(test_sha1)
 add_shared_test(test_enum)
+target_sources(test_enum PRIVATE test_enum.inl)
 add_shared_test(test_load_store)
 add_shared_test(test_file_io)
 target_compile_definitions(test_file_io PRIVATE

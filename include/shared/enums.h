@@ -94,10 +94,13 @@ class EnumTraitsBase {
     virtual const char *GetEnumName() const = 0;
     virtual bool IsSigned() const = 0;
     virtual size_t GetSizeBytes() const = 0;
-    virtual bool IsSerializable() const = 0;
+
+    virtual const char *GetSerializableHash() const = 0;
+    virtual int64_t GetEENDLine() const = 0;
+    virtual const char *GetEENDFile() const = 0;
 
     // If signed, the value will have been sign-extended from its original width; if unsigned, zero-extended. Check IsSigned() and GetSizeBytes() for more info.
-    virtual void ForEach(void (*fn)(uint64_t value, const char *name, void *context), void *fn_context) const = 0;
+    virtual void ForEach(void (*fn)(uint64_t value, const char *name, const EnumTraitsBase *traits, void *context), void *fn_context) const = 0;
 
     static const EnumTraitsBase *GetFirst();
     const EnumTraitsBase *GetNext() const;
@@ -185,6 +188,11 @@ void to_json(nlohmann::json &j, const EnumFlags<T> &value) {
 }
 
 #endif
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void EnsureEnumsInitialised();
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
