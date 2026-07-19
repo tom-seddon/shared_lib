@@ -8,6 +8,7 @@
 #include <shared/log.h>
 #include <optional>
 #include <shared/system_specific.h>
+#include <string.h>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -97,20 +98,21 @@ void EnsureEnumsInitialised() {
 
             if (strcmp(wanted_hash, traits->serializable_hash) != 0) {
                 char *msg;
-                asprintf(&msg,
-                         PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
-                         traits->eend_file,
-                         traits->eend_line,
-                         traits->name,
-                         wanted_hash,
-                         traits->serializable_hash);
+                if (asprintf(&msg,
+                             PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
+                             traits->eend_file,
+                             traits->eend_line,
+                             traits->name,
+                             wanted_hash,
+                             traits->serializable_hash) != -1) {
 
-                fputs(msg, stdout);
+                    fputs(msg, stdout);
 #if SYSTEM_WINDOWS
-                OutputDebugStringA(msg);
+                    OutputDebugStringA(msg);
 #endif
 
-                free(msg), msg = nullptr;
+                    free(msg), msg = nullptr;
+                }
 
                 all_good = false;
             }
@@ -181,6 +183,7 @@ void EnsureEnumsInitialised() {
                 uint64_t field_mask = (uint64_t)1 << value->bit_width;
                 --field_mask;
                 field_mask <<= value->bit_shift;
+                (void)field_mask;
 
                 ASSERT(value->value == field_mask);
 
