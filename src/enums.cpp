@@ -9,6 +9,7 @@
 #include <optional>
 #include <shared/system_specific.h>
 #include <string.h>
+#include <algorithm>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -44,14 +45,27 @@ EnumTraitsBase::EnumTraitsBase() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-void EnumTraitsBase::Init(const char *name_, bool is_signed_, size_t size_bytes_, const char *serializable_hash_, int eend_line_, const char *eend_file_) {
+void EnumTraitsBase::MustBeUninitialized() {
+    ASSERT(!this->first_value);
+    //printf("EnumTraitsBase::MustBeUninitialized: %s\n", this->name);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void EnumTraitsBase::Init1(const char *name_, bool is_signed_, size_t size_bytes_, const char *serializable_hash_, int eend_line_, const char *eend_file_) {
     this->name = name_;
     this->is_signed = is_signed_;
-    this->size_bytes = size_bytes_;
+    this->size_bits = size_bytes_ * CHAR_BIT;
     this->serializable_hash = serializable_hash_;
     this->eend_line = eend_line_;
     this->eend_file = eend_file_;
+}
 
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void EnumTraitsBase::Init2() {
     // Set up the bitfield flag. Don't check for consistency at this point; that can come later.
     ASSERT(this->first_value);
     for (const EnumValue *value = this->first_value; value; value = value->next) {
@@ -169,15 +183,12 @@ void EnsureEnumsInitialised() {
         if (traits->is_bitfield) {
             ASSERT(!traits->is_signed);
 
-            size_t size_bits = traits->size_bytes * 8;
-            (void)size_bits;
-
             const EnumValue *bits[64] = {};
 
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
                 // Ensure field is within bounds.
-                ASSERT((size_t)value->bit_shift < size_bits);
-                ASSERT((size_t)(value->bit_shift + value->bit_width) <= size_bits);
+                ASSERT((size_t)value->bit_shift < traits->size_bits);
+                ASSERT((size_t)(value->bit_shift + value->bit_width) <= traits->size_bits);
 
                 // Ensure field doesn't overlap with any other.
                 uint64_t field_mask = (uint64_t)1 << value->bit_width;
@@ -199,10 +210,20 @@ void EnsureEnumsInitialised() {
     (void)all_good;
     ASSERT(all_good);
 
+    std::vector<const EnumTraitsBase *> all_traits;
     for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
+        all_traits.push_back(traits);
+    }
+
+    std::sort(all_traits.begin(), all_traits.end(),
+              [](const EnumTraitsBase *a, const EnumTraitsBase *b) -> bool {
+                  return strcmp(a->name, b->name) < 0;
+              });
+
+    for (const EnumTraitsBase *traits : all_traits) {
         printf("%s: size=%zu signed=%s serializable=%s\n",
                traits->name,
-               traits->size_bytes,
+               traits->size_bits,
                BOOL_STR(traits->is_signed),
                BOOL_STR(traits->serializable_hash));
 
@@ -222,4 +243,8 @@ void EnsureEnumsInitialised() {
             printf("\n");
         }
     }
+
+    char msg[1000];
+    snprintf(msg, sizeof msg, "%zu enums\n", all_traits.size());
+    fputs(msg, stdout);
 }

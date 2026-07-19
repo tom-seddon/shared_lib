@@ -109,7 +109,7 @@ class EnumTraitsBase {
     const char *name = nullptr;
     bool is_signed = false;
     bool is_bitfield = false;
-    size_t size_bytes = 0;
+    size_t size_bits = 0;
     const char *serializable_hash = nullptr;
     int eend_line = -1;
     const char *eend_file = nullptr;
@@ -125,8 +125,11 @@ class EnumTraitsBase {
 
     static const EnumTraitsBase *GetFirst();
 
+    void MustBeUninitialized();
+
   protected:
-    void Init(const char *name, bool is_signed, size_t size_bytes, const char *serializable_hash, int eend_line, const char *eend_file);
+    void Init1(const char *name, bool is_signed, size_t size_bits, const char *serializable_hash, int eend_line, const char *eend_file);
+    void Init2();
 
   private:
 };

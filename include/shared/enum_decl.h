@@ -6,6 +6,18 @@
 #define EPREFIX
 #endif
 
+#ifdef _MSC_VER
+
+#define EEND__EXTRA()                                     \
+    extern "C" const void *CONCAT2(g_force_link_, ENAME); \
+    __pragma(comment(linker, "/include:" STRINGIZE(CONCAT2(g_force_link_, ENAME))))
+
+#else
+
+#define EEND__EXTRA()
+
+#endif
+
 // The ENAME##BaseType thing is a bit ugly, but at this point the actual type
 // isn't available. And when an ordinary enum, it can't be forward declared.
 #define EBEGIN__BODY(COLON_BASE_TYPE, BASE_TYPE)                               \
@@ -34,10 +46,11 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
+#define EMETA_SIZE_BITS(N)
+
 #define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)             \
     }                                                                        \
     ;                                                                        \
-    typedef enum ENAME ENAME;                                                \
                                                                              \
     template <>                                                              \
     struct EnumTraits<ENAME> : public EnumTraitsBase {                       \
@@ -45,11 +58,12 @@
         typedef CONCAT2(ENAME, BaseType) BaseType;                           \
         typedef const char *(*GetNameFn)(BaseType);                          \
         static const GetNameFn GET_NAME_FN;                                  \
-        static const char NAME[];                                            \
         static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR); \
         EnumTraits();                                                        \
         static const EnumTraits<ENAME> s_traits;                             \
-    };
+    };                                                                       \
+                                                                             \
+    EEND__EXTRA()
 
 #define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, true)
 #define EEND() EEND__BODY(nullptr, false)

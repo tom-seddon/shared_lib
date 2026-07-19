@@ -21,10 +21,13 @@
 #undef EQPN
 #undef EQPNV
 
+#undef EMETA_SIZE_BITS
+
 #undef EOVERLOAD
 #undef EEND
 #undef EEND_SERIALIZABLE
 #undef EEND__BODY
+#undef EEND__EXTRA
 
 #undef NBEGIN
 #undef NEND
