@@ -84,6 +84,7 @@ inline const char *GetEnumName(T value) {
 class EnumTraitsBase;
 
 struct EnumValue {
+    const EnumValue *next = nullptr;
     const EnumTraitsBase *traits = nullptr;
     const char *name = nullptr;
 
@@ -96,8 +97,8 @@ struct EnumValue {
     uint8_t bit_width = 0;                    //>0 if a bitfield
     const EnumTraitsBase *bit_enum = nullptr; //if an enum
 
-    EnumValue(const EnumTraitsBase *traits, const char *name, uint64_t value);
-    EnumValue(const EnumTraitsBase *traits, const char *name, uint64_t value, int8_t bit_shift, uint8_t bit_width);
+    EnumValue() = default;
+    EnumValue(int8_t bit_shift, uint8_t bit_width);
 };
 
 class EnumTraitsBase {
@@ -109,6 +110,7 @@ class EnumTraitsBase {
     const char *serializable_hash = nullptr;
     int eend_line = -1;
     const char *eend_file = nullptr;
+    const EnumValue *first_value = nullptr;
 
     EnumTraitsBase();
     virtual ~EnumTraitsBase() = default;
@@ -117,8 +119,6 @@ class EnumTraitsBase {
     EnumTraitsBase &operator=(const EnumTraitsBase &) = delete;
     EnumTraitsBase(EnumTraitsBase &&) = delete;
     EnumTraitsBase &operator=(EnumTraitsBase &&) = delete;
-
-    virtual void ForEach(void (*fn)(const EnumValue *value, void *context), void *fn_context) const = 0;
 
     static const EnumTraitsBase *GetFirst();
 

@@ -27,22 +27,21 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
-#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)                              \
-    }                                                                                         \
-    ;                                                                                         \
-    typedef enum ENAME ENAME;                                                                 \
-                                                                                              \
-    template <>                                                                               \
-    struct EnumTraits<ENAME> : public EnumTraitsBase {                                        \
-        typedef ENAME EnumType;                                                               \
-        typedef CONCAT2(ENAME, BaseType) BaseType;                                            \
-        typedef const char *(*GetNameFn)(BaseType);                                           \
-        static const GetNameFn GET_NAME_FN;                                                   \
-        static const char NAME[];                                                             \
-        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR);                  \
-        void ForEach(void (*fn)(const EnumValue *, void *), void *fn_context) const override; \
-        EnumTraits();                                                                         \
-        static const EnumTraits<ENAME> s_traits;                                              \
+#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)             \
+    }                                                                        \
+    ;                                                                        \
+    typedef enum ENAME ENAME;                                                \
+                                                                             \
+    template <>                                                              \
+    struct EnumTraits<ENAME> : public EnumTraitsBase {                       \
+        typedef ENAME EnumType;                                              \
+        typedef CONCAT2(ENAME, BaseType) BaseType;                           \
+        typedef const char *(*GetNameFn)(BaseType);                          \
+        static const GetNameFn GET_NAME_FN;                                  \
+        static const char NAME[];                                            \
+        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR); \
+        EnumTraits();                                                        \
+        static const EnumTraits<ENAME> s_traits;                             \
     };
 
 #define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, true)

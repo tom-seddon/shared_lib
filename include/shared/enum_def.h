@@ -21,11 +21,20 @@
     const typename EnumTraits<ENAME>::GetNameFn EnumTraits<ENAME>::GET_NAME_FN = &CONCAT3(Get, ENAME, EnumName); \
     const char EnumTraits<ENAME>::NAME[] = STRINGIZE(ENAME);                                                     \
     static const char *CONCAT3(InternalGet, ENAME, EnumName)(TYPE value,                                         \
-                                                             void (*fn)(const EnumValue *value, void *),         \
-                                                             void *fn_context) {                                 \
+                                                             const EnumValue **first_value_ptr) {                \
         static_assert(sizeof(TYPE) <= sizeof(uint64_t));                                                         \
-        if (fn) {                                                                                                \
-            goto fall_through;                                                                                   \
+                                                                                                                 \
+        static EnumValue *s_first_value;                                                                         \
+        EnumValue *prev_value = nullptr;                                                                         \
+                                                                                                                 \
+        if (first_value_ptr) {                                                                                   \
+            if (s_first_value) {                                                                                 \
+            return_first_value:                                                                                  \
+                *first_value_ptr = s_first_value;                                                                \
+                return nullptr;                                                                                  \
+            } else {                                                                                             \
+                goto fall_through;                                                                               \
+            }                                                                                                    \
         }                                                                                                        \
                                                                                                                  \
         switch (value) {                                                                                         \
@@ -34,15 +43,23 @@
 #define EBEGIN() EBEGIN__BODY(int)
 #define EBEGIN_DERIVED(BASE_NAME) EBEGIN__BODY(BASE_NAME)
 
-#define EN_INTERNAL(NAME, STR, ...)                                                                                                 \
-    case (NAME):                                                                                                                    \
-        if (!fn) {                                                                                                                  \
-            return (STR);                                                                                                           \
-        }                                                                                                                           \
-        {                                                                                                                           \
-            static const EnumValue s_value(&EnumTraits<ENAME>::s_traits, STR, (uint64_t)(int64_t)(NAME)__VA_OPT__(, ) __VA_ARGS__); \
-            (*fn)(&s_value, fn_context);                                                                                            \
-        }                                                                                                                           \
+#define EN_INTERNAL(NAME, STR, ...)                        \
+    case (NAME):                                           \
+        if (!first_value_ptr) {                            \
+            return (STR);                                  \
+        }                                                  \
+        {                                                  \
+            static EnumValue s_value{__VA_ARGS__};         \
+            s_value.traits = &EnumTraits<ENAME>::s_traits; \
+            s_value.name = (STR);                          \
+            s_value.value = (uint64_t)(int64_t)(NAME);     \
+            if (!s_first_value) {                          \
+                s_first_value = &s_value;                  \
+            } else {                                       \
+                prev_value->next = &s_value;               \
+            }                                              \
+            prev_value = &s_value;                         \
+        }                                                  \
         EFALLTHROUGH;
 
 #define EN(NAME) EN_INTERNAL(NAME, #NAME)
@@ -64,16 +81,17 @@
 
 #define EEND__BODY(SERIALIZABLE_HASH, EEND_FILE, EEND_LINE)                                                    \
     default:                                                                                                   \
-        if (!fn) {                                                                                             \
+        if (!first_value_ptr) {                                                                                \
             return "?" STRINGIZE(ENAME) "?";                                                                   \
         }                                                                                                      \
         }                                                                                                      \
                                                                                                                \
-        return nullptr; /* only gets here if calling with a callback */                                        \
+        /* only gets here for first time call for retrieving first value ptr. */                               \
+        goto return_first_value;                                                                               \
         }                                                                                                      \
                                                                                                                \
         EPREFIX UNUSED const char *CONCAT3(Get, ENAME, EnumName)(typename EnumTraits<ENAME>::BaseType value) { \
-            return CONCAT3(InternalGet, ENAME, EnumName)(value, nullptr, nullptr);                             \
+            return CONCAT3(InternalGet, ENAME, EnumName)(value, nullptr);                                      \
         }                                                                                                      \
                                                                                                                \
         EnumTraits<ENAME>::EnumTraits() {                                                                      \
@@ -83,10 +101,7 @@
             this->serializable_hash = SERIALIZABLE_HASH;                                                       \
             this->eend_line = EEND_LINE;                                                                       \
             this->eend_file = EEND_FILE;                                                                       \
-        }                                                                                                      \
-                                                                                                               \
-        void EnumTraits<ENAME>::ForEach(void (*fn)(const EnumValue *, void *), void *fn_context) const {       \
-            CONCAT3(InternalGet, ENAME, EnumName)({}, fn, fn_context);                                         \
+            CONCAT3(InternalGet, ENAME, EnumName)({}, &this->first_value);                                     \
         }                                                                                                      \
                                                                                                                \
         const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;                                                   \

@@ -24,20 +24,8 @@ static const EnumTraitsBase *g_first_enum_traits;
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-EnumValue::EnumValue(const EnumTraitsBase *traits_, const char *name_, uint64_t value_)
-    : traits(traits_)
-    , name(name_)
-    , value(value_) {
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-EnumValue::EnumValue(const EnumTraitsBase *traits_, const char *name_, uint64_t value_, int8_t bit_shift_, uint8_t bit_width_)
-    : traits(traits_)
-    , name(name_)
-    , value(value_)
-    , bit_shift(bit_shift_)
+EnumValue::EnumValue(int8_t bit_shift_, uint8_t bit_width_)
+    : bit_shift(bit_shift_)
     , bit_width(bit_width_) {
 }
 
@@ -64,86 +52,6 @@ const EnumTraitsBase *EnumTraitsBase::GetFirst() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void GetAllValues(const EnumValue *value, void *context) {
-    auto str = (std::string *)context;
-
-    *str += value->name;
-    *str += "\n";
-
-    // The actual value is irrelevant. Only the set of names is important.
-}
-
-struct CheckCountValueState {
-    uint64_t ucount = 0, umax = 0;
-    int64_t icount = 0, imax = 0;
-    bool seen_count = false;
-};
-
-static void CheckCountValue(const EnumValue *value, void *context) {
-    auto state = (CheckCountValueState *)context;
-
-    if (value->traits->is_signed) {
-        if (state->seen_count) {
-            ASSERT((int64_t)value < state->imax);
-        } else {
-            if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
-                state->icount = (int64_t)value->value;
-                state->seen_count = true;
-            } else {
-                state->imax = (std::max)(state->imax, (int64_t)value->value);
-            }
-        }
-    } else {
-        if (state->seen_count) {
-            ASSERT(value->value < state->umax);
-        } else {
-            if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
-                state->ucount = value->value;
-                state->seen_count = true;
-            } else {
-                state->umax = (std::max)(state->umax, value->value);
-            }
-        }
-    }
-}
-
-struct CheckBitfieldsState {
-    std::optional<bool> is_all_bitfields;
-};
-
-static void CheckBitfields(const EnumValue *value, void *context) {
-    auto state = (CheckBitfieldsState *)context;
-
-    bool is_bitfield;
-    if (value->bit_shift < 0) {
-        ASSERT(value->bit_width == 0);
-        is_bitfield = false;
-    } else {
-        ASSERT(value->bit_width > 0);
-        is_bitfield = true;
-    }
-
-    if (state->is_all_bitfields.has_value()) {
-        ASSERT(is_bitfield == *state->is_all_bitfields);
-    } else {
-        state->is_all_bitfields = is_bitfield;
-    }
-}
-
-static void PrintEnumValue(const EnumValue *value, void *context) {
-    (void)context;
-
-    printf("    %s: ", value->name);
-
-    if (value->traits->is_signed) {
-        printf("%" PRId64, (int64_t)value->value);
-    } else {
-        printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
-    }
-
-    printf("\n");
-}
-
 void EnsureEnumsInitialised() {
     if (g_enums_list_initialised.exchange(true, std::memory_order_release)) {
         return;
@@ -154,7 +62,10 @@ void EnsureEnumsInitialised() {
         // Check serializable hash.
         if (traits->serializable_hash) {
             std::string stuff;
-            traits->ForEach(&GetAllValues, &stuff);
+            for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                stuff += value->name;
+                stuff += "\n";
+            }
 
             char wanted_hash[SHA1::DIGEST_STR_SIZE];
             SHA1::HashBuffer(nullptr, wanted_hash, stuff.data(), stuff.size());
@@ -181,12 +92,59 @@ void EnsureEnumsInitialised() {
         }
 
         // Make sure Count and MaxValue value make sense.
-        CheckCountValueState ccvs;
-        traits->ForEach(&CheckCountValue, &ccvs);
+        {
+            uint64_t ucount = 0, umax = 0;
+            int64_t icount = 0, imax = 0;
+            bool seen_count = false;
+
+            for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                if (value->traits->is_signed) {
+                    if (seen_count) {
+                        ASSERT((int64_t)value < imax);
+                    } else {
+                        if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
+                            icount = (int64_t)value->value;
+                            seen_count = true;
+                        } else {
+                            imax = (std::max)(imax, (int64_t)value->value);
+                        }
+                    }
+                } else {
+                    if (seen_count) {
+                        ASSERT(value->value < umax);
+                    } else {
+                        if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
+                            ucount = value->value;
+                            seen_count = true;
+                        } else {
+                            umax = (std::max)(umax, value->value);
+                        }
+                    }
+                }
+            }
+        }
 
         // Ensure bitfields are consistent.
-        CheckBitfieldsState cbs;
-        traits->ForEach(&CheckBitfields, &cbs);
+        {
+            std::optional<bool> is_all_bitfields;
+
+            for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                bool is_bitfield;
+                if (value->bit_shift < 0) {
+                    ASSERT(value->bit_width == 0);
+                    is_bitfield = false;
+                } else {
+                    ASSERT(value->bit_width > 0);
+                    is_bitfield = true;
+                }
+
+                if (is_all_bitfields.has_value()) {
+                    ASSERT(is_bitfield == *is_all_bitfields);
+                } else {
+                    is_all_bitfields = is_bitfield;
+                }
+            }
+        }
     }
 
     (void)all_good;
@@ -199,6 +157,16 @@ void EnsureEnumsInitialised() {
                BOOL_STR(traits->is_signed),
                BOOL_STR(traits->serializable_hash));
 
-        traits->ForEach(&PrintEnumValue, nullptr);
+        for (const EnumValue *value = traits->first_value; value; value = value->next) {
+            printf("    %s: ", value->name);
+
+            if (value->traits->is_signed) {
+                printf("%" PRId64, (int64_t)value->value);
+            } else {
+                printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
+            }
+
+            printf("\n");
+        }
     }
 }
