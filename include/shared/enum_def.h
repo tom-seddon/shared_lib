@@ -17,30 +17,7 @@
 
 #ifdef _MSC_VER
 
-// Try to prevent the traits object from being removed.
-//
-// Form a pointer to the traits object, do it as extern "C" (so that the name is
-// easy to guess), and force it to be exported. The linker can't eliminate it,
-// and therefore can't eliminate the thing it points to.
-//
-// There's a corresponding /include: pragma in the decl header that tries to
-// improve the chances of this actually working, since I had some cases where
-// things were still getting stripped out across static library boundaries if
-// the object file was otherwise empty. But I expect this means it's still
-// possible for an enum's tables to go missing, if it's only ever used in a
-// static library.
-//
-// Gemini's suggestion ("one final back-up trick"):
-//
-// <pre>
-// // Force the variable into the CRT initialization section so it executes at startup
-// #pragma section(".CRT$XCU", read)
-// __declspec(allocate(".CRT$XCU")) static int* msvc_force_ptr_##__LINE__ = (int*)&msvc_force_symbol_##__LINE__;
-// </pre>
-
-#define EEND__EXTRA()                                                                    \
-    extern "C" const void *CONCAT2(g_force_link_, ENAME) = &EnumTraits<ENAME>::s_traits; \
-    __pragma(comment(linker, "/export:" STRINGIZE(CONCAT2(g_force_link_, ENAME))))
+#define EEND__EXTRA()
 #define EEND__USED_RETAIN()
 
 #else

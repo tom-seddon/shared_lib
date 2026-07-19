@@ -8,9 +8,7 @@
 
 #ifdef _MSC_VER
 
-#define EEND__EXTRA()                                     \
-    extern "C" const void *CONCAT2(g_force_link_, ENAME); \
-    __pragma(comment(linker, "/include:" STRINGIZE(CONCAT2(g_force_link_, ENAME))))
+#define EEND__EXTRA()
 #define EEND__USED_RETAIN()
 
 #else
