@@ -41,10 +41,12 @@
 #define EEND__EXTRA()                                                                    \
     extern "C" const void *CONCAT2(g_force_link_, ENAME) = &EnumTraits<ENAME>::s_traits; \
     __pragma(comment(linker, "/export:" STRINGIZE(CONCAT2(g_force_link_, ENAME))))
+#define EEND__USED_RETAIN()
 
 #else
 
 #define EEND__EXTRA()
+#define EEND__USED_RETAIN()
 
 #endif
 
@@ -143,8 +145,6 @@
                                                                                                                \
             this->Init2();                                                                                     \
         }                                                                                                      \
-                                                                                                               \
-        const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;                                                   \
                                                                                                                \
         EEND__EXTRA()
 

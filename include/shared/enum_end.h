@@ -28,6 +28,7 @@
 #undef EEND_SERIALIZABLE
 #undef EEND__BODY
 #undef EEND__EXTRA
+#undef EEND__USED_RETAIN
 
 #undef NBEGIN
 #undef NEND
