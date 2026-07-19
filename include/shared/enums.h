@@ -91,6 +91,8 @@ struct EnumValue {
     // If the enum type is signed, the value will have been sign-extended from
     // its original width; if unsigned, zero-extended. Check IsSigned() and
     // GetSizeBytes() for the owning traits for more info.
+    //
+    // The value of a bit field is the mask for its bits.
     uint64_t value = 0;
 
     int8_t bit_shift = -1;                    //>=0 if a bitfield
@@ -98,7 +100,7 @@ struct EnumValue {
     const EnumTraitsBase *bit_enum = nullptr; //if an enum
 
     EnumValue() = default;
-    EnumValue(int8_t bit_shift, uint8_t bit_width);
+    EnumValue(int8_t bit_shift, uint8_t bit_width, const EnumTraitsBase *bit_enum = nullptr);
 };
 
 class EnumTraitsBase {
@@ -106,6 +108,7 @@ class EnumTraitsBase {
     const EnumTraitsBase *next = nullptr;
     const char *name = nullptr;
     bool is_signed = false;
+    bool is_bitfield = false;
     size_t size_bytes = 0;
     const char *serializable_hash = nullptr;
     int eend_line = -1;
@@ -123,6 +126,8 @@ class EnumTraitsBase {
     static const EnumTraitsBase *GetFirst();
 
   protected:
+    void Init(const char *name, bool is_signed, size_t size_bytes, const char *serializable_hash, int eend_line, const char *eend_file);
+
   private:
 };
 

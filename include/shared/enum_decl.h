@@ -20,7 +20,14 @@
 #define ENV(NAME, VALUE) NAME = (VALUE),
 #define EPN(NAME) EN(CONCAT3(ENAME, _, NAME))
 #define EPNV(NAME, VALUE) ENV(CONCAT3(ENAME, _, NAME), VALUE)
-#define EPN_BIT_FLAG(NAME, BIT) EQPNV(NAME, 1 << (BIT))
+
+#define EPN_BIT_FLAG(NAME, BIT) \
+    EQPNV(NAME, 1 << (BIT))     \
+    EPN_BIT_FIELD(NAME, (BIT), 1)
+
+#define EPN_BIT_FIELD(NAME, BIT, WIDTH) \
+    EQPNV(CONCAT2(NAME, Shift), (BIT))  \
+    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
 
 #define EQN(NAME) EN(NAME)
 #define EQNV(NAME, VALUE) ENV(NAME, VALUE)

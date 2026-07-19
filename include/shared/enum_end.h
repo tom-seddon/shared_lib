@@ -14,6 +14,7 @@
 #undef ENV
 #undef EPN
 #undef EPN_BIT_FLAG
+#undef EPN_BIT_FIELD
 #undef EPNV
 #undef EQN
 #undef EQNV

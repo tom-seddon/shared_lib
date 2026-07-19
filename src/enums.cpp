@@ -24,9 +24,10 @@ static const EnumTraitsBase *g_first_enum_traits;
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-EnumValue::EnumValue(int8_t bit_shift_, uint8_t bit_width_)
+EnumValue::EnumValue(int8_t bit_shift_, uint8_t bit_width_, const EnumTraitsBase *bit_enum_)
     : bit_shift(bit_shift_)
-    , bit_width(bit_width_) {
+    , bit_width(bit_width_)
+    , bit_enum(bit_enum_) {
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -37,6 +38,26 @@ EnumTraitsBase::EnumTraitsBase() {
 
     this->next = g_first_enum_traits;
     g_first_enum_traits = this;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void EnumTraitsBase::Init(const char *name_, bool is_signed_, size_t size_bytes_, const char *serializable_hash_, int eend_line_, const char *eend_file_) {
+    this->name = name_;
+    this->is_signed = is_signed_;
+    this->size_bytes = size_bytes_;
+    this->serializable_hash = serializable_hash_;
+    this->eend_line = eend_line_;
+    this->eend_file = eend_file_;
+
+    // Set up the bitfield flag. Don't check for consistency at this point; that can come later.
+    ASSERT(this->first_value);
+    for (const EnumValue *value = this->first_value; value; value = value->next) {
+        if (value->bit_width > 0) {
+            this->is_bitfield = true;
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -59,6 +80,10 @@ void EnsureEnumsInitialised() {
 
     bool all_good = true;
     for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
+        for (const EnumValue *value = traits->first_value; value; value = value->next) {
+            ASSERT(value->traits == traits);
+        }
+
         // Check serializable hash.
         if (traits->serializable_hash) {
             std::string stuff;
@@ -128,36 +153,41 @@ void EnsureEnumsInitialised() {
 
         // Check the enum is all bitfields, or all values.
         {
-            std::optional<bool> is_all_bitfields;
-
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
-                bool is_bitfield;
                 if (value->bit_shift < 0) {
                     ASSERT(value->bit_width == 0);
-                    is_bitfield = false;
+                    ASSERT(!traits->is_bitfield);
                 } else {
                     ASSERT(value->bit_width > 0);
-                    is_bitfield = true;
-                }
-
-                if (is_all_bitfields.has_value()) {
-                    ASSERT(is_bitfield == *is_all_bitfields);
-                } else {
-                    is_all_bitfields = is_bitfield;
+                    ASSERT(traits->is_bitfield);
                 }
             }
         }
 
-        // Check the bitfields are in bounds for the enum's size.
-        {
+        if (traits->is_bitfield) {
+            ASSERT(!traits->is_signed);
+
             size_t size_bits = traits->size_bytes * 8;
             (void)size_bits;
 
+            const EnumValue *bits[64] = {};
+
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
-                if (value->bit_shift >= 0) {
-                    ASSERT(value->bit_width > 0);
-                    ASSERT((size_t)value->bit_shift < size_bits);
-                    ASSERT((size_t)(value->bit_shift + value->bit_width) <= size_bits);
+                // Ensure field is within bounds.
+                ASSERT((size_t)value->bit_shift < size_bits);
+                ASSERT((size_t)(value->bit_shift + value->bit_width) <= size_bits);
+
+                // Ensure field doesn't overlap with any other.
+                uint64_t field_mask = (uint64_t)1 << value->bit_width;
+                --field_mask;
+                field_mask <<= value->bit_shift;
+
+                ASSERT(value->value == field_mask);
+
+                for (uint8_t i = 0; i < value->bit_width; ++i) {
+                    const EnumValue **bit = &bits[value->bit_shift + i];
+                    ASSERT(!*bit);
+                    *bit = value;
                 }
             }
         }
@@ -176,10 +206,14 @@ void EnsureEnumsInitialised() {
         for (const EnumValue *value = traits->first_value; value; value = value->next) {
             printf("    %s: ", value->name);
 
-            if (value->traits->is_signed) {
-                printf("%" PRId64, (int64_t)value->value);
+            if (value->bit_width > 0) {
+                printf("bit=%d width=%u (mask=0x%" PRIx64 ")", value->bit_shift, value->bit_width, value->value);
             } else {
-                printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
+                if (value->traits->is_signed) {
+                    printf("%" PRId64, (int64_t)value->value);
+                } else {
+                    printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
+                }
             }
 
             printf("\n");

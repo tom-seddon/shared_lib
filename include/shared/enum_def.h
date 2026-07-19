@@ -43,31 +43,39 @@
 #define EBEGIN() EBEGIN__BODY(int)
 #define EBEGIN_DERIVED(BASE_NAME) EBEGIN__BODY(BASE_NAME)
 
-#define EN_INTERNAL(NAME, STR, ...)                        \
-    case (NAME):                                           \
-        if (!first_value_ptr) {                            \
-            return (STR);                                  \
-        }                                                  \
-        {                                                  \
-            static EnumValue s_value{__VA_ARGS__};         \
-            s_value.traits = &EnumTraits<ENAME>::s_traits; \
-            s_value.name = (STR);                          \
-            s_value.value = (uint64_t)(int64_t)(NAME);     \
-            if (!s_first_value) {                          \
-                s_first_value = &s_value;                  \
-            } else {                                       \
-                prev_value->next = &s_value;               \
-            }                                              \
-            prev_value = &s_value;                         \
-        }                                                  \
-        EFALLTHROUGH;
+#define EN__ENUM_VALUE(NAME, STR, ...)                 \
+    BEGIN_MACRO {                                      \
+        static EnumValue s_value{__VA_ARGS__};         \
+        s_value.traits = &EnumTraits<ENAME>::s_traits; \
+        s_value.name = (STR);                          \
+        s_value.value = (uint64_t)(int64_t)(NAME);     \
+        if (!s_first_value) {                          \
+            s_first_value = &s_value;                  \
+        } else {                                       \
+            prev_value->next = &s_value;               \
+        }                                              \
+        prev_value = &s_value;                         \
+    }                                                  \
+    END_MACRO
 
-#define EN(NAME) EN_INTERNAL(NAME, #NAME)
+#define EN__CASE(NAME, STR, ...) \
+    EFALLTHROUGH;                \
+    case (NAME):                 \
+        if (!first_value_ptr) {  \
+            return (STR);        \
+        }                        \
+        EN__ENUM_VALUE((NAME), (STR)__VA_OPT__(, ) __VA_ARGS__);
 
-#define EPN(NAME) EN_INTERNAL(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME))
+#define EN(NAME) EN__CASE(NAME, #NAME)
+
+#define EPN(NAME) EN__CASE(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME));
 
 #define EPN_BIT_FLAG(NAME, BIT) \
-    EN_INTERNAL(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME), (BIT), 1)
+    EN__CASE(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME), (BIT), 1)
+
+#define EPN_BIT_FIELD(NAME, BIT, WIDTH) EN__ENUM_VALUE((((uint64_t)1 << (WIDTH)) - 1) << (BIT), #NAME, (BIT), (WIDTH));
+
+#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENUM_ENAME) EN__ENUM_VALUE((((uint64_t)1 << (WIDTH)) - 1) << (BIT), #NAME, (BIT), (WIDTH), &EnumTraits<ENUM_ENAME>::s_traits);
 
 #define ENV(NAME, VALUE) EN(NAME)
 
@@ -79,6 +87,7 @@
 #define EQPNV(NAME, VALUE)
 
 #define EEND__BODY(SERIALIZABLE_HASH, EEND_FILE, EEND_LINE)                                                    \
+    EFALLTHROUGH;                                                                                              \
     default:                                                                                                   \
         if (!first_value_ptr) {                                                                                \
             return "?" STRINGIZE(ENAME) "?";                                                                   \
@@ -94,13 +103,14 @@
         }                                                                                                      \
                                                                                                                \
         EnumTraits<ENAME>::EnumTraits() {                                                                      \
-            this->name = NAME;                                                                                 \
-            this->is_signed = std::is_signed<BaseType>::value;                                                 \
-            this->size_bytes = sizeof(ENAME);                                                                  \
-            this->serializable_hash = SERIALIZABLE_HASH;                                                       \
-            this->eend_line = EEND_LINE;                                                                       \
-            this->eend_file = EEND_FILE;                                                                       \
             CONCAT3(InternalGet, ENAME, EnumName)({}, &this->first_value);                                     \
+            /* get the field initialization out of the macro */                                                \
+            this->Init((NAME),                                                                                 \
+                       std::is_signed<BaseType>::value,                                                        \
+                       sizeof(ENAME),                                                                          \
+                       SERIALIZABLE_HASH,                                                                      \
+                       EEND_LINE,                                                                              \
+                       EEND_FILE);                                                                             \
         }                                                                                                      \
                                                                                                                \
         const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;                                                   \
