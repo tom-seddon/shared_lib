@@ -66,8 +66,7 @@
 
 #define EPN(NAME) EN_INTERNAL(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME))
 
-#define EPN_BIT_FLAG(NAME, BIT)                             \
-    static_assert((BIT) >= 0 && (BIT) < sizeof(ENAME) * 8); \
+#define EPN_BIT_FLAG(NAME, BIT) \
     EN_INTERNAL(CONCAT3(ENAME, _, NAME), STRINGIZE(NAME), (BIT), 1)
 
 #define ENV(NAME, VALUE) EN(NAME)

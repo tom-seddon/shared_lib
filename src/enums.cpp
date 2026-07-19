@@ -100,7 +100,8 @@ void EnsureEnumsInitialised() {
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
                 if (value->traits->is_signed) {
                     if (seen_count) {
-                        ASSERT((int64_t)value < imax);
+                        (void)icount;
+                        ASSERT((int64_t)value < icount);
                     } else {
                         if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
                             icount = (int64_t)value->value;
@@ -111,7 +112,8 @@ void EnsureEnumsInitialised() {
                     }
                 } else {
                     if (seen_count) {
-                        ASSERT(value->value < umax);
+                        (void)ucount;
+                        ASSERT(value->value < ucount);
                     } else {
                         if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
                             ucount = value->value;
@@ -124,7 +126,7 @@ void EnsureEnumsInitialised() {
             }
         }
 
-        // Ensure bitfields are consistent.
+        // Check the enum is all bitfields, or all values.
         {
             std::optional<bool> is_all_bitfields;
 
@@ -142,6 +144,20 @@ void EnsureEnumsInitialised() {
                     ASSERT(is_bitfield == *is_all_bitfields);
                 } else {
                     is_all_bitfields = is_bitfield;
+                }
+            }
+        }
+
+        // Check the bitfields are in bounds for the enum's size.
+        {
+            size_t size_bits = traits->size_bytes * 8;
+            (void)size_bits;
+
+            for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                if (value->bit_shift >= 0) {
+                    ASSERT(value->bit_width > 0);
+                    ASSERT((size_t)value->bit_shift < size_bits);
+                    ASSERT((size_t)(value->bit_shift + value->bit_width) <= size_bits);
                 }
             }
         }
