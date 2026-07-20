@@ -46,6 +46,14 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
+// Specify that this enum is WIP, avoiding some of the debug checks.
+//
+// (This isn't anything principled. It just skips the checks that I've needed
+// skipping personally.)
+#define EMETA_WIP()
+
+// Specify that this enum is N bits wide, rather than whatever size it actually
+// is.
 #define EMETA_SIZE_BITS(N)
 
 #define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)             \

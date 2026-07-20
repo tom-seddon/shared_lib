@@ -90,6 +90,7 @@
 #define EQPN(NAME)
 #define EQPNV(NAME, VALUE)
 
+#define EMETA_WIP() traits->wip = true;
 #define EMETA_SIZE_BITS(N) traits->size_bits = (N);
 
 #define EEND__BODY(SERIALIZABLE_HASH, EEND_FILE, EEND_LINE)                                                    \

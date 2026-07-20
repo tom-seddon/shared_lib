@@ -114,6 +114,7 @@ class EnumTraitsBase {
     int eend_line = -1;
     const char *eend_file = nullptr;
     const EnumValue *first_value = nullptr;
+    bool wip = false;
 
     EnumTraitsBase();
     virtual ~EnumTraitsBase() = default;

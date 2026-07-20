@@ -168,8 +168,8 @@ void EnsureEnumsInitialised() {
             }
         }
 
-        // Check the enum is all bitfields, or all values.
-        {
+        if (!traits->wip) {
+            // Check the enum is all bitfields, or all values.
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
                 if (value->bit_shift < 0) {
                     ASSERT(value->bit_width == 0);

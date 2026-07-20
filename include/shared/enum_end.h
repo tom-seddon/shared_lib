@@ -22,6 +22,7 @@
 #undef EQPNV
 
 #undef EMETA_SIZE_BITS
+#undef EMETA_WIP
 
 #undef EOVERLOAD
 #undef EEND
