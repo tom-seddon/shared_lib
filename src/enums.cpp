@@ -96,6 +96,8 @@ void EnsureEnumsInitialised() {
 
     bool all_good = true;
     for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
+        ASSERT(traits->size_bits <= 64);
+
         for (const EnumValue *value = traits->first_value; value; value = value->next) {
             ASSERT(value->traits == traits);
         }
@@ -168,6 +170,24 @@ void EnsureEnumsInitialised() {
             }
         }
 
+        // Check all values are in range.
+        if (traits->size_bits < 64) {
+            if (traits->is_signed) {
+                int64_t min_value = -(int64_t)((uint64_t)1 << traits->size_bits);
+                int64_t max_value = (int64_t)(((uint64_t)1 << traits->size_bits) - 1);
+                for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                    ASSERT((int64_t)value->value >= min_value);
+                    ASSERT((int64_t)value->value < max_value);
+                }
+            } else {
+                uint64_t max_value = (uint64_t)1 << traits->size_bits;
+                for (const EnumValue *value = traits->first_value; value; value = value->next) {
+
+                    ASSERT(value->value < max_value);
+                }
+            }
+        }
+
         if (!traits->wip) {
             // Check the enum is all bitfields, or all values.
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
@@ -203,6 +223,15 @@ void EnsureEnumsInitialised() {
                     const EnumValue **bit = &bits[value->bit_shift + i];
                     ASSERT(!*bit);
                     *bit = value;
+                }
+
+                // Ensure enum type (if any) makes sense.
+                if (value->bit_enum) {
+                    ASSERT(!value->bit_enum->is_signed);
+
+                    for (const EnumValue *field_value = value->bit_enum->first_value; field_value; field_value = field_value->next) {
+                        ASSERT(field_value->value <= field_mask);
+                    }
                 }
             }
         }

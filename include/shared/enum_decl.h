@@ -41,6 +41,10 @@
     EQPNV(CONCAT2(NAME, Shift), (BIT))  \
     EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
 
+#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENAME2) \
+    EQPNV(CONCAT2(NAME, Shift), (BIT))               \
+    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
+
 #define EQN(NAME) EN(NAME)
 #define EQNV(NAME, VALUE) ENV(NAME, VALUE)
 #define EQPN(NAME) EPN(NAME)

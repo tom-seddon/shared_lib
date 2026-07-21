@@ -79,7 +79,7 @@
 
 #define EPN_BIT_FIELD(NAME, BIT, WIDTH) EN__ENUM_VALUE((((uint64_t)1 << (WIDTH)) - 1) << (BIT), #NAME, (BIT), (WIDTH));
 
-#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENUM_ENAME) EN__ENUM_VALUE((((uint64_t)1 << (WIDTH)) - 1) << (BIT), #NAME, (BIT), (WIDTH), &EnumTraits<ENUM_ENAME>::s_traits);
+#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENAME2) EN__ENUM_VALUE((((uint64_t)1 << (WIDTH)) - 1) << (BIT), #NAME, (BIT), (WIDTH), &EnumTraits<ENAME2>::s_traits);
 
 #define ENV(NAME, VALUE) EN(NAME)
 
