@@ -204,6 +204,15 @@ void EnsureEnumsInitialised() {
         }
 
         if (traits->is_bitfield) {
+            // Check the bitfield makes sense.
+            //
+            // - Enum is unsigned
+            // - All fields fit within the enum's width
+            // - No fields overlap
+            // - Fields that are enums are wide enough to fit all values
+            //
+            // Also, if serializable: every field must be a 1-bit bool. (This is
+            // a current limitation, but it could be done better.)
             ASSERT(!traits->is_signed);
 
             const EnumValue *bits[64] = {};
@@ -234,6 +243,11 @@ void EnsureEnumsInitialised() {
                     for (const EnumValue *field_value = value->bit_enum->first_value; field_value; field_value = field_value->next) {
                         ASSERT(field_value->value <= field_mask);
                     }
+                }
+
+                if (traits->serializable_hash) {
+                    ASSERT(value->bit_width == 1);
+                    ASSERT(!value->bit_enum);
                 }
             }
         }
