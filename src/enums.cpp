@@ -24,6 +24,8 @@ static std::atomic<bool> g_enums_list_initialised{false};
 
 static const EnumTraitsBase *g_first_enum_traits;
 
+static constexpr bool PRINT_ENUM_VALUES = false;
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
@@ -240,41 +242,43 @@ void EnsureEnumsInitialised() {
     (void)all_good;
     ASSERT(all_good);
 
-    std::vector<const EnumTraitsBase *> all_traits;
-    for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
-        all_traits.push_back(traits);
-    }
-
-    std::sort(all_traits.begin(), all_traits.end(),
-              [](const EnumTraitsBase *a, const EnumTraitsBase *b) -> bool {
-                  return strcmp(a->name, b->name) < 0;
-              });
-
-    for (const EnumTraitsBase *traits : all_traits) {
-        printf("%s: size=%zu signed=%s serializable=%s\n",
-               traits->name,
-               traits->size_bits,
-               BOOL_STR(traits->is_signed),
-               BOOL_STR(traits->serializable_hash));
-
-        for (const EnumValue *value = traits->first_value; value; value = value->next) {
-            printf("    %s: ", value->name);
-
-            if (value->bit_width > 0) {
-                printf("bit=%d width=%u (mask=0x%" PRIx64 ")", value->bit_shift, value->bit_width, value->value);
-            } else {
-                if (value->traits->is_signed) {
-                    printf("%" PRId64, (int64_t)value->value);
-                } else {
-                    printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
-                }
-            }
-
-            printf("\n");
+    if constexpr (PRINT_ENUM_VALUES) {
+        std::vector<const EnumTraitsBase *> all_traits;
+        for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
+            all_traits.push_back(traits);
         }
-    }
 
-    char msg[1000];
-    snprintf(msg, sizeof msg, "%zu enums\n", all_traits.size());
-    fputs(msg, stdout);
+        std::sort(all_traits.begin(), all_traits.end(),
+                  [](const EnumTraitsBase *a, const EnumTraitsBase *b) -> bool {
+                      return strcmp(a->name, b->name) < 0;
+                  });
+
+        for (const EnumTraitsBase *traits : all_traits) {
+            printf("%s: size=%zu signed=%s serializable=%s\n",
+                   traits->name,
+                   traits->size_bits,
+                   BOOL_STR(traits->is_signed),
+                   BOOL_STR(traits->serializable_hash));
+
+            for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                printf("    %s: ", value->name);
+
+                if (value->bit_width > 0) {
+                    printf("bit=%d width=%u (mask=0x%" PRIx64 ")", value->bit_shift, value->bit_width, value->value);
+                } else {
+                    if (value->traits->is_signed) {
+                        printf("%" PRId64, (int64_t)value->value);
+                    } else {
+                        printf("%" PRIu64 " (0x%" PRIx64 ")", value->value, value->value);
+                    }
+                }
+
+                printf("\n");
+            }
+        }
+
+        char msg[1000];
+        snprintf(msg, sizeof msg, "%zu enums\n", all_traits.size());
+        fputs(msg, stdout);
+    }
 }
