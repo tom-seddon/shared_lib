@@ -176,15 +176,20 @@ void EnsureEnumsInitialised() {
         if (traits->size_bits < 64) {
             if (traits->is_signed) {
                 int64_t min_value = -(int64_t)((uint64_t)1 << traits->size_bits);
+                (void)min_value;
+
                 int64_t max_value = (int64_t)(((uint64_t)1 << traits->size_bits) - 1);
+                (void)max_value;
+
                 for (const EnumValue *value = traits->first_value; value; value = value->next) {
                     ASSERT((int64_t)value->value >= min_value);
                     ASSERT((int64_t)value->value < max_value);
                 }
             } else {
                 uint64_t max_value = (uint64_t)1 << traits->size_bits;
-                for (const EnumValue *value = traits->first_value; value; value = value->next) {
+                (void)max_value;
 
+                for (const EnumValue *value = traits->first_value; value; value = value->next) {
                     ASSERT(value->value < max_value);
                 }
             }
