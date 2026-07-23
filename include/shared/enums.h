@@ -110,6 +110,7 @@ class EnumTraitsBase {
     bool is_signed = false;
     bool is_bitfield = false;
     size_t size_bits = 0;
+    int width_xdigits = 0; //for use with printf
     const char *serializable_hash = nullptr;
     int eend_line = -1;
     const char *eend_file = nullptr;

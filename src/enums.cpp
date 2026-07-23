@@ -76,6 +76,10 @@ void EnumTraitsBase::Init2() {
             this->is_bitfield = true;
         }
     }
+
+    // The size in bits is fixed now.
+    ASSERT(this->size_bits > 0);
+    this->width_xdigits = (int)((this->size_bits + 3) / 4);
 }
 
 //////////////////////////////////////////////////////////////////////////
