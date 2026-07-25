@@ -184,3 +184,10 @@ endif()
 
 ##########################################################################
 ##########################################################################
+
+function(add_test_boilerplate test_name)
+  set_property(TEST ${test_name}
+    APPEND
+    PROPERTY ENVIRONMENT ABORT_WHEN_ASSERT_FAILS=0)
+endfunction()
+

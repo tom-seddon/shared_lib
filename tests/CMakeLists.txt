@@ -7,9 +7,11 @@ function(add_shared_test stem)
   add_executable(${stem} ${stem}.cpp)
   target_link_libraries(${stem} PRIVATE shared_lib)
   if(NOT ${TEST_DONT_RUN})
+    set(test_name "shared/${stem}")
     add_test(
-      NAME shared/${stem}
+      NAME ${test_name}
       COMMAND $<TARGET_FILE:${stem}> ${TEST_ARGS})
+    add_test_boilerplate(${test_name})
   endif()
 endfunction()
 

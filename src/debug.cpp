@@ -110,7 +110,22 @@ void HandleAssertFailed(void) {
         return;
     }
 
-    abort();
+    // abort pops up a message box on Windows, giving an opportunity for
+    // debugger attachment. But this isn't very helpful when running the
+    // automated tests.
+    bool call_abort = true;
+    if (char *env = getenv("ABORT_WHEN_ASSERT_FAILS")) {
+        if (strcmp(env, "0") == 0) {
+            call_abort = false;
+        }
+    }
+
+    if (call_abort) {
+        abort();
+    } else {
+        // (deliberately don't attempt to shut down cleanly)
+        _Exit(EXIT_FAILURE);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
