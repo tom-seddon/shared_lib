@@ -95,6 +95,10 @@ const EnumTraitsBase *EnumTraitsBase::GetFirst() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+static bool IsEnumCountOrMaxValue(const EnumValue *value) {
+    return strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0;
+}
+
 void EnsureEnumsInitialised() {
     if (g_enums_list_initialised.exchange(true, std::memory_order_release)) {
         return;
@@ -102,6 +106,7 @@ void EnsureEnumsInitialised() {
 
     bool all_good = true;
     for (const EnumTraitsBase *traits = EnumTraitsBase::GetFirst(); traits; traits = traits->next) {
+        ASSERT(traits->size_bits > 0);
         ASSERT(traits->size_bits <= 64);
 
         for (const EnumValue *value = traits->first_value; value; value = value->next) {
@@ -153,7 +158,7 @@ void EnsureEnumsInitialised() {
                         (void)icount;
                         ASSERT((int64_t)value < icount);
                     } else {
-                        if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
+                        if (IsEnumCountOrMaxValue(value)) {
                             icount = (int64_t)value->value;
                             seen_count = true;
                         } else {
@@ -165,7 +170,7 @@ void EnsureEnumsInitialised() {
                         (void)ucount;
                         ASSERT(value->value < ucount);
                     } else {
-                        if (strcmp(value->name, "Count") == 0 || strcmp(value->name, "MaxValue") == 0) {
+                        if (IsEnumCountOrMaxValue(value)) {
                             ucount = value->value;
                             seen_count = true;
                         } else {
@@ -179,22 +184,30 @@ void EnsureEnumsInitialised() {
         // Check all values are in range.
         if (traits->size_bits < 64) {
             if (traits->is_signed) {
-                int64_t min_value = -(int64_t)((uint64_t)1 << traits->size_bits);
+                int64_t min_value = -(int64_t)((uint64_t)1 << (traits->size_bits - 1));
                 (void)min_value;
 
-                int64_t max_value = (int64_t)(((uint64_t)1 << traits->size_bits) - 1);
+                int64_t max_value = (int64_t)(((uint64_t)1 << (traits->size_bits - 1)) - 1);
                 (void)max_value;
 
                 for (const EnumValue *value = traits->first_value; value; value = value->next) {
                     ASSERT((int64_t)value->value >= min_value);
-                    ASSERT((int64_t)value->value < max_value);
+                    if (IsEnumCountOrMaxValue(value)) {
+                        ASSERT((int64_t)value->value <= max_value + 1);
+                    } else {
+                        ASSERT((int64_t)value->value <= max_value);
+                    }
                 }
             } else {
                 uint64_t max_value = (uint64_t)1 << traits->size_bits;
                 (void)max_value;
 
                 for (const EnumValue *value = traits->first_value; value; value = value->next) {
-                    ASSERT(value->value < max_value);
+                    if (IsEnumCountOrMaxValue(value)) {
+                        ASSERT(value->value <= max_value + 1);
+                    } else {
+                        ASSERT(value->value <= max_value);
+                    }
                 }
             }
         }
