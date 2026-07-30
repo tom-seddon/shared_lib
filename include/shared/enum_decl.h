@@ -6,6 +6,18 @@
 #define EPREFIX
 #endif
 
+#ifdef _MSC_VER
+
+#define EEND__EXTRA()
+#define EEND__USED_RETAIN()
+
+#else
+
+#define EEND__EXTRA()
+#define EEND__USED_RETAIN() __attribute__((used, retain))
+
+#endif
+
 // The ENAME##BaseType thing is a bit ugly, but at this point the actual type
 // isn't available. And when an ordinary enum, it can't be forward declared.
 #define EBEGIN__BODY(COLON_BASE_TYPE, BASE_TYPE)                               \
@@ -21,28 +33,55 @@
 #define EPN(NAME) EN(CONCAT3(ENAME, _, NAME))
 #define EPNV(NAME, VALUE) ENV(CONCAT3(ENAME, _, NAME), VALUE)
 
+#define EPN_BIT_FLAG(NAME, BIT) \
+    EQPNV(NAME, 1 << (BIT))     \
+    EPN_BIT_FIELD(NAME, (BIT), 1)
+
+#define EPN_BIT_FIELD(NAME, BIT, WIDTH) \
+    EQPNV(CONCAT2(NAME, Shift), (BIT))  \
+    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
+
+#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENAME2) \
+    EQPNV(CONCAT2(NAME, Shift), (BIT))               \
+    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
+
 #define EQN(NAME) EN(NAME)
 #define EQNV(NAME, VALUE) ENV(NAME, VALUE)
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
-#define EEND__BODY(SERIALIZABLE)                                \
-    }                                                           \
-    ;                                                           \
-    typedef enum ENAME ENAME;                                   \
-                                                                \
-    template <>                                                 \
-    struct EnumTraits<ENAME> {                                  \
-        typedef ENAME EnumType;                                 \
-        typedef CONCAT2(ENAME, BaseType) BaseType;              \
-        typedef const char *(*GetNameFn)(BaseType);             \
-        static const GetNameFn GET_NAME_FN;                     \
-        static const char NAME[];                               \
-        static constexpr bool IS_SERIALIZABLE = (SERIALIZABLE); \
-    };
+// Specify that this enum is WIP, avoiding some of the debug checks.
+//
+// (This isn't anything principled. It just skips the checks that I've needed
+// skipping personally.)
+#define EMETA_WIP()
 
-#define EEND_SERIALIZABLE() EEND__BODY(true)
-#define EEND() EEND__BODY(false)
+// Specify that this enum is N bits wide, rather than whatever size it actually
+// is.
+#define EMETA_SIZE_BITS(N)
+
+#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)             \
+    }                                                                        \
+    ;                                                                        \
+                                                                             \
+    template <>                                                              \
+    struct EnumTraits<ENAME> : public EnumTraitsBase {                       \
+        typedef ENAME EnumType;                                              \
+        typedef CONCAT2(ENAME, BaseType) BaseType;                           \
+        typedef const char *(*GetNameFn)(BaseType);                          \
+        static const GetNameFn GET_NAME_FN;                                  \
+        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR); \
+        EnumTraits();                                                        \
+        static const EnumTraits<ENAME> s_traits;                             \
+    };                                                                       \
+                                                                             \
+    EEND__USED_RETAIN()                                                      \
+    inline const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;              \
+                                                                             \
+    EEND__EXTRA()
+
+#define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, true)
+#define EEND() EEND__BODY(nullptr, false)
 
 //#define EOVERLOAD() const char *GetEnumValueName(ENAME value);
 

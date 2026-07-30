@@ -13,16 +13,24 @@
 #undef EN
 #undef ENV
 #undef EPN
+#undef EPN_BIT_FLAG
+#undef EPN_BIT_FIELD
+#undef EPN_BIT_FIELD_ENUM
 #undef EPNV
 #undef EQN
 #undef EQNV
 #undef EQPN
 #undef EQPNV
 
+#undef EMETA_SIZE_BITS
+#undef EMETA_WIP
+
 #undef EOVERLOAD
 #undef EEND
 #undef EEND_SERIALIZABLE
 #undef EEND__BODY
+#undef EEND__EXTRA
+#undef EEND__USED_RETAIN
 
 #undef NBEGIN
 #undef NEND
@@ -30,3 +38,4 @@
 #undef NOVERLOAD
 
 #undef EINTERNAL
+#undef EFALLTHROUGH

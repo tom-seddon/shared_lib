@@ -81,6 +81,64 @@ inline const char *GetEnumName(T value) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+class EnumTraitsBase;
+
+struct EnumValue {
+    const EnumValue *next = nullptr;
+    const EnumTraitsBase *traits = nullptr;
+    const char *name = nullptr;
+
+    // If the enum type is signed, the value will have been sign-extended from
+    // its original width; if unsigned, zero-extended. Check IsSigned() and
+    // GetSizeBytes() for the owning traits for more info.
+    //
+    // The value of a bit field is the mask for its bits.
+    uint64_t value = 0;
+
+    int8_t bit_shift = -1;                    //>=0 if a bitfield
+    uint8_t bit_width = 0;                    //>0 if a bitfield
+    const EnumTraitsBase *bit_enum = nullptr; //if an enum
+
+    EnumValue() = default;
+    EnumValue(int8_t bit_shift, uint8_t bit_width, const EnumTraitsBase *bit_enum = nullptr);
+};
+
+class EnumTraitsBase {
+  public:
+    const EnumTraitsBase *next = nullptr;
+    const char *name = nullptr;
+    bool is_signed = false;
+    bool is_bitfield = false;
+    size_t size_bits = 0;
+    int width_xdigits = 0; //for use with printf
+    const char *serializable_hash = nullptr;
+    int eend_line = -1;
+    const char *eend_file = nullptr;
+    const EnumValue *first_value = nullptr;
+    bool wip = false;
+
+    EnumTraitsBase();
+    virtual ~EnumTraitsBase() = default;
+
+    EnumTraitsBase(const EnumTraitsBase &) = delete;
+    EnumTraitsBase &operator=(const EnumTraitsBase &) = delete;
+    EnumTraitsBase(EnumTraitsBase &&) = delete;
+    EnumTraitsBase &operator=(EnumTraitsBase &&) = delete;
+
+    static const EnumTraitsBase *GetFirst();
+
+    void MustBeUninitialized();
+
+  protected:
+    void Init1(const char *name, bool is_signed, size_t size_bits, const char *serializable_hash, int eend_line, const char *eend_file);
+    void Init2();
+
+  private:
+};
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 #ifdef NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE
 
 template <class T>
@@ -156,6 +214,11 @@ void to_json(nlohmann::json &j, const EnumFlags<T> &value) {
 }
 
 #endif
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void EnsureEnumsInitialised();
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
