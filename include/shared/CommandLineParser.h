@@ -24,6 +24,7 @@ class CommandLineParser {
         std::string help;
         std::string meta;
         bool show_default = false;
+        bool show_default_string_unquoted = false;
 
         bool *set_if_present_ptr = nullptr;
         bool *reset_if_present_ptr = nullptr;
@@ -35,6 +36,7 @@ class CommandLineParser {
         Option &Help(std::string help);
         Option &Meta(std::string meta);
         Option &ShowDefault();
+        Option &ShowDefaultStringUnquoted();
 
         Option &SetIfPresent(bool *present_ptr);
         Option &ResetIfPresent(bool *present_ptr);

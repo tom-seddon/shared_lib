@@ -48,6 +48,16 @@ CommandLineParser::Option &CommandLineParser::Option::ShowDefault() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+CommandLineParser::Option &CommandLineParser::Option::ShowDefaultStringUnquoted() {
+    ASSERT(this->str_ptr);
+    this->show_default_string_unquoted = true;
+
+    return *this;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 CommandLineParser::Option &CommandLineParser::Option::SetIfPresent(bool *set_if_present_ptr_) {
     this->set_if_present_ptr = set_if_present_ptr_;
 
@@ -410,7 +420,11 @@ void CommandLineParser::Help(const char *argv0) const {
                     } else if (option->float_ptr) {
                         msg += "(Default: " + std::to_string(*option->float_ptr) + ")";
                     } else if (option->str_ptr) {
-                        msg += "(Default: ``" + *option->str_ptr + "'')";
+                        if (option->show_default_string_unquoted) {
+                            msg += "(Default: " + *option->str_ptr + ")";
+                        } else {
+                            msg += "(Default: ``" + *option->str_ptr + "'')";
+                        }
                     }
                 }
 
