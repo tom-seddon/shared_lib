@@ -33,6 +33,7 @@
 #undef EEND__USED_RETAIN
 
 #undef NBEGIN
+#undef NBEGIN_DERIVED
 #undef NEND
 #undef NN
 #undef NOVERLOAD

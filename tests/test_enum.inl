@@ -11,8 +11,8 @@ EQPNV(H, 200)
 EEND()
 #undef ENAME
 
-#define ENAME enum OtherEnum
-NBEGIN(OtherEnum)
+#define ENAME OtherEnum
+NBEGIN()
 NN(OE_1)
 NN(OE_2)
 NN(OE_5)

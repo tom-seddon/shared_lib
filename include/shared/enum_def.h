@@ -130,10 +130,13 @@
 #define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, __FILE__, __LINE__)
 
 /* This gets a bit freakish. */
-#define NBEGIN(NAME)                                                \
-    EPREFIX const char *CONCAT3(Get, NAME, EnumName)(ENAME value) { \
-        switch (value) {                                            \
-        default:                                                    \
+#define NBEGIN_DERIVED(BASE_TYPE) NBEGIN__BODY(BASE_TYPE)
+#define NBEGIN() NBEGIN__BODY(ENAME)
+
+#define NBEGIN__BODY(BASE_TYPE)                                          \
+    EPREFIX const char *CONCAT3(Get, ENAME, EnumName)(BASE_TYPE value) { \
+        switch (value) {                                                 \
+        default:                                                         \
             return "?" STRINGIZE(NAME) "?";
 
 #define NN(NAME) \
