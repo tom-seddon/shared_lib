@@ -50,6 +50,9 @@
 #define EQPN(NAME) EPN(NAME)
 #define EQPNV(NAME, VALUE) EPNV(NAME, VALUE)
 
+// Supply UI name for the previously defined value.
+#define EUI_NAME(...)
+
 // Specify that this enum is WIP, avoiding some of the debug checks.
 //
 // (This isn't anything principled. It just skips the checks that I've needed
@@ -60,25 +63,25 @@
 // is.
 #define EMETA_SIZE_BITS(N)
 
-#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)             \
-    }                                                                        \
-    ;                                                                        \
-                                                                             \
-    template <>                                                              \
-    struct EnumTraits<ENAME> : public EnumTraitsBase {                       \
-        typedef ENAME EnumType;                                              \
-        typedef CONCAT2(ENAME, BaseType) BaseType;                           \
-        typedef const char *(*GetNameFn)(BaseType);                          \
-        static const GetNameFn GET_NAME_FN;                                  \
-        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR); \
-        EnumTraits();                                                        \
-        static const EnumTraits<ENAME> s_traits;                             \
-    };                                                                       \
-                                                                             \
-    EEND__USED_RETAIN()                                                      \
-    inline const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;              \
-                                                                             \
-    EEND__EXTRA()
+#define EEND__BODY(SERIALIZABLE_HASH, IS_SERIALIZABLE_CONSTEXPR)                      \
+    }                                                                                 \
+    ;                                                                                 \
+                                                                                      \
+    template <>                                                                       \
+    struct EnumTraits<ENAME> : public EnumTraitsBaseTyped<CONCAT2(ENAME, BaseType)> { \
+        typedef ENAME EnumType;                                                       \
+        typedef const char *(*GetNameFn)(BaseType);                                   \
+        static const GetNameFn GET_NAME_FN;                                           \
+        static constexpr bool IS_SERIALIZABLE = (IS_SERIALIZABLE_CONSTEXPR);          \
+        EnumTraits();                                                                 \
+                                                                                      \
+        static const EnumTraits<ENAME> s_traits;                                      \
+    };                                                                                \
+                                                                                      \
+    EEND__USED_RETAIN()                                                               \
+    inline const EnumTraits<ENAME> EnumTraits<ENAME>::s_traits;
+
+EEND__EXTRA()
 
 #define EEND_SERIALIZABLE(HASH) EEND__BODY(HASH, true)
 #define EEND() EEND__BODY(nullptr, false)

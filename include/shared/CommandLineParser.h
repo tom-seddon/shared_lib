@@ -7,18 +7,23 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <functional>
+#include "enums.h"
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
 class Log;
 
+class EnumTraitsBase;
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
 class CommandLineParser {
   public:
-    struct Option {
+    class Option {
+      public:
         char short_option = 0;
         std::string long_option;
         std::string help;
@@ -32,6 +37,8 @@ class CommandLineParser {
         std::vector<std::string> *strv_ptr = nullptr;
         int *int_ptr = nullptr;
         float *float_ptr = nullptr;
+        void *enum_ptr = nullptr;
+        const EnumTraitsBase *enum_traits = nullptr;
 
         Option &Help(std::string help);
         Option &Meta(std::string meta);
@@ -44,6 +51,20 @@ class CommandLineParser {
         Option &AddArgToList(std::vector<std::string> *strv_ptr);
         Option &Arg(int *int_ptr);
         Option &Arg(float *float_ptr);
+
+        template <class T>
+        Option &EnumArg(T *ptr) {
+            return this->EnumArg(ptr, &EnumTraits<T>::s_traits);
+        }
+
+        template <class T>
+        Option &EnumArg(T *ptr, const EnumTraitsBase *enum_traits) {
+            return this->EnumArg(ptr, sizeof *ptr, enum_traits);
+        }
+
+      protected:
+      private:
+        Option &EnumArg(void *ptr, size_t value_size, const EnumTraitsBase *enum_traits);
     };
 
     explicit CommandLineParser(std::string description = "", std::string summary = "");

@@ -17,6 +17,14 @@ struct EnumBaseType;
 template <class T>
 struct EnumTraits;
 
+class EnumTraitsBase;
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+template <class T>
+const EnumTraitsBase *GetEnumTraits();
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
@@ -93,6 +101,9 @@ struct EnumValue {
     // Human-facing name for the value, if specified. By default, this is the
     // same as this->name, but it can be tweaked if making the name palatable to
     // the compiler made too much of a mess.
+    //
+    // As with name, this is intended for use as an identifier kind of thing,
+    // for typing in on the command line and that sort of thing.
     const char *ui_name = nullptr;
 
     // If the enum type is signed, the value will have been sign-extended from
@@ -116,6 +127,7 @@ class EnumTraitsBase {
     const char *name = nullptr;
     bool is_signed = false;
     bool is_bitfield = false;
+    size_t size_bytes = 0;
     size_t size_bits = 0;
     int width_xdigits = 0; //for use with printf
     const char *serializable_hash = nullptr;
@@ -136,10 +148,33 @@ class EnumTraitsBase {
 
     void MustBeUninitialized();
 
+    // slightly ropey helpers for non-templated code.
+    virtual uint64_t GetValue(const void *ptr) const = 0;
+    virtual void SetValue(void *ptr, uint64_t value) const = 0;
+
+    const EnumValue *FindEnumValue(const void *ptr) const;
+
   protected:
     void Init1(const char *name, bool is_signed, size_t size_bits, const char *serializable_hash, int eend_line, const char *eend_file);
     void Init2();
 
+  private:
+};
+
+template <class T>
+class EnumTraitsBaseTyped : public EnumTraitsBase {
+  public:
+    typedef T BaseType;
+
+    uint64_t GetValue(const void *ptr) const override {
+        return (uint64_t)(int64_t)*(BaseType *)ptr;
+    }
+
+    void SetValue(void *ptr, uint64_t value) const override {
+        *(BaseType *)ptr = (BaseType)value;
+    }
+
+  protected:
   private:
 };
 

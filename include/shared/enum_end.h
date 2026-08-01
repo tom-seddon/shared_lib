@@ -31,6 +31,7 @@
 #undef EEND__BODY
 #undef EEND__EXTRA
 #undef EEND__USED_RETAIN
+#undef EUI_NAME
 
 #undef NBEGIN
 #undef NBEGIN_DERIVED

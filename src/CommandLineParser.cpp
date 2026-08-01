@@ -112,6 +112,19 @@ CommandLineParser::Option &CommandLineParser::Option::Arg(float *float_ptr_) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+CommandLineParser::Option &CommandLineParser::Option::EnumArg(void *ptr, size_t value_size, const EnumTraitsBase *enum_traits_) {
+    // Not very clever check...
+    ASSERT(value_size <= enum_traits_->size_bytes);
+
+    this->enum_ptr = ptr;
+    this->enum_traits = enum_traits_;
+
+    return *this;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 CommandLineParser::CommandLineParser(std::string description, std::string summary)
     : m_description(std::move(description))
     , m_summary(std::move(summary)) {
@@ -410,6 +423,23 @@ void CommandLineParser::Help(const char *argv0) const {
 
                 std::string msg = option->help;
 
+                if (option->enum_traits) {
+                    if (!msg.empty()) {
+                        msg += " ";
+                    }
+
+                    msg += "(" + (option->meta.empty() ? "Argument" : option->meta) + " must be one of: ";
+
+                    for (const EnumValue *value = option->enum_traits->first_value; value; value = value->next) {
+                        msg += value->ui_name;
+                        if (value->next) {
+                            msg += "; ";
+                        }
+                    }
+
+                    msg += ")";
+                }
+
                 if (option->show_default) {
                     if (!msg.empty()) {
                         msg += " ";
@@ -424,6 +454,10 @@ void CommandLineParser::Help(const char *argv0) const {
                             msg += "(Default: " + *option->str_ptr + ")";
                         } else {
                             msg += "(Default: ``" + *option->str_ptr + "'')";
+                        }
+                    } else if (option->enum_traits) {
+                        if (const EnumValue *value = option->enum_traits->FindEnumValue(option->enum_ptr)) {
+                            msg += std::string("(Default: ") + value->ui_name + ")";
                         }
                     }
                 }
@@ -537,6 +571,22 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
         *option->float_ptr = (float)d;
     }
 
+    if (option->enum_traits) {
+        bool set = false;
+        for (const EnumValue *value = option->enum_traits->first_value; value; value = value->next) {
+            if (strcasecmp(arg.c_str(), value->ui_name) == 0) {
+                option->enum_traits->SetValue(option->enum_ptr, value->value);
+                set = true;
+                break;
+            }
+        }
+
+        if (!set) {
+            m_error_log->f("invalid %s: %s\n", option->enum_traits->name, arg.c_str());
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -544,7 +594,7 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
 //////////////////////////////////////////////////////////////////////////
 
 bool CommandLineParser::NeedsArgument(const std::shared_ptr<Option> &option) const {
-    return option->str_ptr || option->int_ptr || option->float_ptr || option->strv_ptr;
+    return option->str_ptr || option->int_ptr || option->float_ptr || option->strv_ptr || option->enum_traits;
 }
 
 //////////////////////////////////////////////////////////////////////////

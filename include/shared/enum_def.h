@@ -31,6 +31,11 @@
 #define EBEGIN__BODY(TYPE)                                                                                       \
     const typename EnumTraits<ENAME>::GetNameFn EnumTraits<ENAME>::GET_NAME_FN = &CONCAT3(Get, ENAME, EnumName); \
                                                                                                                  \
+    template <>                                                                                                  \
+    const EnumTraitsBase *GetEnumTraits<ENAME>() {                                                               \
+        return &EnumTraits<ENAME>::s_traits;                                                                     \
+    }                                                                                                            \
+                                                                                                                 \
     EBEGIN__INTERNAL_GET_PREFIX(TYPE)
 
 #define EBEGIN__INTERNAL_GET_PREFIX(TYPE)                                               \
@@ -98,7 +103,7 @@
 #define EMETA_WIP() traits->wip = true;
 #define EMETA_SIZE_BITS(N) traits->size_bits = (N);
 
-#define EUI_NAME(STR) ((prev_value->ui_name = (STR)), (void)0)
+#define EUI_NAME(STR) prev_value->ui_name = (STR);
 
 #define EEND__INTERNAL_GET_SUFFIX                                                    \
     EFALLTHROUGH;                                                                    \
@@ -132,6 +137,10 @@
         CONCAT3(InternalGet, ENAME, EnumName)({}, this);                                                   \
                                                                                                            \
         this->Init2();                                                                                     \
+    }                                                                                                      \
+                                                                                                           \
+    EPREFIX const EnumTraitsBase *CONCAT3(Get, ENAME, EnumTraits)() {                                      \
+        return &EnumTraits<ENAME>::s_traits;                                                               \
     }                                                                                                      \
                                                                                                            \
     EEND__EXTRA()
@@ -169,9 +178,8 @@
     EEND__INTERNAL_GET_SUFFIX                                                                  \
                                                                                                \
     struct CONCAT2(NEnumTraits, ENAME)                                                         \
-        : public EnumTraitsBase {                                                              \
-        typedef ENAME EnumType;                                                                \
-        typedef CONCAT2(ENAME, BaseType) BaseType;                                             \
+        : public EnumTraitsBaseTyped<CONCAT2(ENAME, BaseType)> {                               \
+        typedef BaseType EnumType;                                                             \
         /*typedef const char *(*GetNameFn)(BaseType)*/;                                        \
         /*static const GetNameFn GET_NAME_FN;*/                                                \
         /* TODO: serializable should be an option... */                                        \
@@ -180,7 +188,7 @@
             /* get the field initialization out of the macro */                                \
             this->Init1(STRINGIZE(ENAME),                                                      \
                                   std::is_signed<BaseType>::value,                             \
-                                  sizeof(ENAME),                                               \
+                                  sizeof(BaseType),                                            \
                                   nullptr,                                                     \
                                   __LINE__,                                                    \
                                   __FILE__);                                                   \

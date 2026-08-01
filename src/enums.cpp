@@ -56,10 +56,26 @@ void EnumTraitsBase::MustBeUninitialized() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+const EnumValue *EnumTraitsBase::FindEnumValue(const void *ptr) const {
+    uint64_t uvalue = this->GetValue(ptr);
+
+    for (const EnumValue *value = this->first_value; value; value = value->next) {
+        if (value->value == uvalue) {
+            return value;
+        }
+    }
+
+    return nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 void EnumTraitsBase::Init1(const char *name_, bool is_signed_, size_t size_bytes_, const char *serializable_hash_, int eend_line_, const char *eend_file_) {
     this->name = name_;
     this->is_signed = is_signed_;
-    this->size_bits = size_bytes_ * CHAR_BIT;
+    this->size_bytes = size_bytes_;
+    this->size_bits = this->size_bytes * CHAR_BIT;
     this->serializable_hash = serializable_hash_;
     this->eend_line = eend_line_;
     this->eend_file = eend_file_;
@@ -89,6 +105,12 @@ void EnumTraitsBase::Init2() {
 
     // The size in bits is fixed now.
     ASSERT(this->size_bits > 0);
+
+    // The size may not be expressible in bytes...
+    if (this->size_bits % CHAR_BIT != 0) {
+        this->size_bytes = 0;
+    }
+
     this->width_xdigits = (int)((this->size_bits + 3) / 4);
 }
 
