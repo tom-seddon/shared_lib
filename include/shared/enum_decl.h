@@ -85,7 +85,10 @@
 
 //#define EOVERLOAD() const char *GetEnumValueName(ENAME value);
 
-#define NBEGIN_DERIVED(TYPE) EPREFIX const char *UNUSED CONCAT3(Get, ENAME, EnumName)(TYPE value);
+#define NBEGIN_DERIVED(TYPE)                                              \
+    EPREFIX const char *UNUSED CONCAT3(Get, ENAME, EnumName)(TYPE value); \
+    EPREFIX const EnumTraitsBase *CONCAT3(Get, ENAME, EnumTraits)();
+
 #define NBEGIN() NBEGIN_DERIVED(ENAME)
 #define NEND()
 #define NN(NAME)
