@@ -86,7 +86,14 @@ class EnumTraitsBase;
 struct EnumValue {
     const EnumValue *next = nullptr;
     const EnumTraitsBase *traits = nullptr;
+
+    // Name of the value, derived from the name it has in the sourco code.
     const char *name = nullptr;
+
+    // Human-facing name for the value, if specified. By default, this is the
+    // same as this->name, but it can be tweaked if making the name palatable to
+    // the compiler made too much of a mess.
+    const char *ui_name = nullptr;
 
     // If the enum type is signed, the value will have been sign-extended from
     // its original width; if unsigned, zero-extended. Check IsSigned() and

@@ -75,6 +75,16 @@ void EnumTraitsBase::Init2() {
         if (value->bit_width > 0) {
             this->is_bitfield = true;
         }
+
+        // TODO: this may return...?
+        //
+        //if (!this->any_ui_names) {
+        //    if (value->name != value->ui_name) {
+        //        if (strcmp(value->name, value->ui_name) != 0) {
+        //            this->any_ui_names = true;
+        //        }
+        //    }
+        //}
     }
 
     // The size in bits is fixed now.

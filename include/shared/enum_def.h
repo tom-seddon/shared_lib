@@ -56,6 +56,7 @@
         static EnumValue s_value{__VA_ARGS__};     \
         s_value.traits = traits;                   \
         s_value.name = (STR);                      \
+        s_value.ui_name = s_value.name;            \
         s_value.value = (uint64_t)(int64_t)(NAME); \
         if (!traits->first_value) {                \
             traits->first_value = &s_value;        \
@@ -96,6 +97,8 @@
 
 #define EMETA_WIP() traits->wip = true;
 #define EMETA_SIZE_BITS(N) traits->size_bits = (N);
+
+#define EUI_NAME(STR) ((prev_value->ui_name = (STR)), (void)0)
 
 #define EEND__INTERNAL_GET_SUFFIX                                                    \
     EFALLTHROUGH;                                                                    \
