@@ -31,7 +31,7 @@ int main() {
 
     std::string path = PathJoined(folder, "test_file_io_seek64.dat");
 
-    static_assert(SIZE_MAX > UINT32_MAX);
+    TEST_GT_UU(SIZE_MAX, UINT32_MAX);
 
     printf("Fill...\n");
     std::vector<uint8_t> wanted;

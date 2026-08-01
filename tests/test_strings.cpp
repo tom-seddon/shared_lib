@@ -3,7 +3,7 @@
 #include <vector>
 #include <shared/testing.h>
 
-static std::vector<std::string> GetLines(const std::string &str, size_t max_size = UINT64_MAX) {
+static std::vector<std::string> GetLines(const std::string &str, size_t max_size = SIZE_MAX) {
     TEST_GT_UU(max_size, 0);
     std::vector<std::string> lines;
     ForEachLine(str, [&lines, max_size](const std::string_view &line) -> bool {
