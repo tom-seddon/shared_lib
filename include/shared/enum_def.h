@@ -180,7 +180,7 @@
     struct CONCAT2(NEnumTraits, ENAME)                                                         \
         : public EnumTraitsBaseTyped<CONCAT2(ENAME, BaseType)> {                               \
         typedef BaseType EnumType;                                                             \
-        /*typedef const char *(*GetNameFn)(BaseType)*/;                                        \
+        /*typedef const char *(*GetNameFn)(BaseType);*/                                        \
         /*static const GetNameFn GET_NAME_FN;*/                                                \
         /* TODO: serializable should be an option... */                                        \
         static constexpr bool IS_SERIALIZABLE = false;                                         \
