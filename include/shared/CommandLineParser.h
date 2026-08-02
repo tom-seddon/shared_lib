@@ -39,6 +39,7 @@ class CommandLineParser {
         float *float_ptr = nullptr;
         void *enum_ptr = nullptr;
         const EnumTraitsBase *enum_traits = nullptr;
+        size_t *size_ptr=nullptr;
 
         Option &Help(std::string help);
         Option &Meta(std::string meta);
@@ -51,6 +52,7 @@ class CommandLineParser {
         Option &AddArgToList(std::vector<std::string> *strv_ptr);
         Option &Arg(int *int_ptr);
         Option &Arg(float *float_ptr);
+        Option &Arg(size_t *size_ptr);
 
         template <class T>
         Option &EnumArg(T *ptr) {
