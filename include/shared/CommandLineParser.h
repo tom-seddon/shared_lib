@@ -39,7 +39,7 @@ class CommandLineParser {
         float *float_ptr = nullptr;
         void *enum_ptr = nullptr;
         const EnumTraitsBase *enum_traits = nullptr;
-        size_t *size_ptr=nullptr;
+        size_t *size_ptr = nullptr;
 
         Option &Help(std::string help);
         Option &Meta(std::string meta);

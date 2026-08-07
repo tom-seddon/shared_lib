@@ -113,9 +113,9 @@ CommandLineParser::Option &CommandLineParser::Option::Arg(float *float_ptr_) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-CommandLineParser::Option &CommandLineParser::Option::Arg(size_t *size_ptr_){
-    this->size_ptr=size_ptr_;
-    
+CommandLineParser::Option &CommandLineParser::Option::Arg(size_t *size_ptr_) {
+    this->size_ptr = size_ptr_;
+
     return *this;
 }
 
@@ -124,6 +124,7 @@ CommandLineParser::Option &CommandLineParser::Option::Arg(size_t *size_ptr_){
 
 CommandLineParser::Option &CommandLineParser::Option::EnumArg(void *ptr, size_t value_size, const EnumTraitsBase *enum_traits_) {
     // Not very clever check...
+    (void)value_size;
     ASSERT(value_size <= enum_traits_->size_bytes);
 
     this->enum_ptr = ptr;
@@ -459,8 +460,8 @@ void CommandLineParser::Help(const char *argv0) const {
                         msg += "(Default: " + std::to_string(*option->int_ptr) + ")";
                     } else if (option->float_ptr) {
                         msg += "(Default: " + std::to_string(*option->float_ptr) + ")";
-                    }else if(option->size_ptr){
-                        msg+="(Default: "+std::to_string(*option->size_ptr)+")";
+                    } else if (option->size_ptr) {
+                        msg += "(Default: " + std::to_string(*option->size_ptr) + ")";
                     } else if (option->str_ptr) {
                         if (option->show_default_string_unquoted) {
                             msg += "(Default: " + *option->str_ptr + ")";
@@ -582,21 +583,21 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
 
         *option->float_ptr = (float)d;
     }
-    
-    if(option->size_ptr){
+
+    if (option->size_ptr) {
         char *ep;
-        uint64_t u=strtoull(arg.c_str(),&ep,0);
-        if(*ep!=0){
-            m_error_log->f("invalid number: %s\n",arg.c_str());
+        uint64_t u = strtoull(arg.c_str(), &ep, 0);
+        if (*ep != 0) {
+            m_error_log->f("invalid number: %s\n", arg.c_str());
             return false;
         }
-        
-        if(u>SIZE_MAX){
-            m_error_log->f("invalid size: %" PRIu64 " (max: %zu)\n",u,SIZE_MAX);
+
+        if (u > SIZE_MAX) {
+            m_error_log->f("invalid size: %" PRIu64 " (max: %zu)\n", u, SIZE_MAX);
             return false;
         }
-        
-        *option->size_ptr=(size_t)u;
+
+        *option->size_ptr = (size_t)u;
     }
 
     if (option->enum_traits) {
@@ -622,7 +623,7 @@ bool CommandLineParser::DoArgument(const std::shared_ptr<Option> &option,
 //////////////////////////////////////////////////////////////////////////
 
 bool CommandLineParser::NeedsArgument(const std::shared_ptr<Option> &option) const {
-    return option->str_ptr || option->int_ptr || option->float_ptr || option->strv_ptr || option->enum_traits||option->size_ptr;
+    return option->str_ptr || option->int_ptr || option->float_ptr || option->strv_ptr || option->enum_traits || option->size_ptr;
 }
 
 //////////////////////////////////////////////////////////////////////////
