@@ -157,20 +157,7 @@
                                                 \
     EBEGIN__INTERNAL_GET_PREFIX(BASE_TYPE)
 
-//EPREFIX const char *CONCAT3(Get, ENAME, EnumName)(BASE_TYPE value) { \
-    //    switch (value) {                                                 \
-    //    default:                                                         \
-    //        return "?" STRINGIZE(NAME) "?";
-
-//#define NN(NAME) \
-//    case (NAME): \
-//        return #NAME;
-
 #define NN(NAME) EN__CASE((NAME), #NAME)
-
-//#define NNS(NAME, STR) \
-//    case (NAME):       \
-//        return (STR);
 
 #define NNS(NAME, STR) EN__CASE((NAME), (STR))
 
