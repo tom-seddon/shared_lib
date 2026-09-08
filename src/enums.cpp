@@ -11,6 +11,7 @@
 #include <string.h>
 #include <algorithm>
 #include <vector>
+#include <shared/strings.h>
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -157,22 +158,17 @@ void EnsureEnumsInitialised() {
             SHA1::HashBuffer(nullptr, wanted_hash, stuff.data(), stuff.size());
 
             if (strcmp(wanted_hash, traits->serializable_hash) != 0) {
-                char *msg;
-                if (asprintf(&msg,
-                             PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
-                             traits->eend_file,
-                             traits->eend_line,
-                             traits->name,
-                             wanted_hash,
-                             traits->serializable_hash) != -1) {
+                std::string msg = strprintf(PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
+                                            traits->eend_file,
+                                            traits->eend_line,
+                                            traits->name,
+                                            wanted_hash,
+                                            traits->serializable_hash);
 
-                    fputs(msg, stdout);
+                fputs(msg.c_str(), stdout);
 #if SYSTEM_WINDOWS
-                    OutputDebugStringA(msg);
+                OutputDebugStringA(msg.c_str());
 #endif
-
-                    free(msg), msg = nullptr;
-                }
 
                 all_good = false;
             }
