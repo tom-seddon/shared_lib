@@ -117,6 +117,9 @@ struct EnumValue {
     uint8_t bit_width = 0;                    //>0 if a bitfield
     const EnumTraitsBase *bit_enum = nullptr; //if an enum
 
+    int line = -1;
+    const char *file = nullptr;
+
     EnumValue() = default;
     EnumValue(int8_t bit_shift, uint8_t bit_width, const EnumTraitsBase *bit_enum = nullptr);
 };

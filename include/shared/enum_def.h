@@ -63,6 +63,8 @@
         s_value.name = (STR);                      \
         s_value.ui_name = s_value.name;            \
         s_value.value = (uint64_t)(int64_t)(NAME); \
+        s_value.line = __LINE__;                   \
+        s_value.file = __FILE__;                   \
         if (!traits->first_value) {                \
             traits->first_value = &s_value;        \
         } else {                                   \
