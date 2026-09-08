@@ -53,6 +53,9 @@
 // Supply UI name for the previously defined value.
 #define EUI_NAME(...)
 
+// Exclude previously defined value from serializable hash.
+#define EEXCLUDE_FROM_SERIALIZABLE_HASH()
+
 // Specify that this enum is WIP, avoiding some of the debug checks.
 //
 // (This isn't anything principled. It just skips the checks that I've needed

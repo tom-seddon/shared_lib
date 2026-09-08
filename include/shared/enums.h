@@ -117,6 +117,9 @@ struct EnumValue {
     uint8_t bit_width = 0;                    //>0 if a bitfield
     const EnumTraitsBase *bit_enum = nullptr; //if an enum
 
+    // If false, exclude from serializable hash. This will cause an assert on startup, but only after the existing hash has been checked.
+    bool include_in_serializable_hash = true;
+
     int line = -1;
     const char *file = nullptr;
 

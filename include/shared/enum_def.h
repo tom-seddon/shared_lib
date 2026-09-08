@@ -107,6 +107,8 @@
 
 #define EUI_NAME(STR) prev_value->ui_name = (STR);
 
+#define EEXCLUDE_FROM_SERIALIZABLE_HASH() prev_value->include_in_serializable_hash = false;
+
 #define EEND__INTERNAL_GET_SUFFIX                                                    \
     EFALLTHROUGH;                                                                    \
     default:                                                                         \

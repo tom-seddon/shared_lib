@@ -150,8 +150,23 @@ void EnsureEnumsInitialised() {
         if (traits->serializable_hash) {
             std::string stuff;
             for (const EnumValue *value = traits->first_value; value; value = value->next) {
-                stuff += value->name;
-                stuff += "\n";
+                if (value->include_in_serializable_hash) {
+                    stuff += value->name;
+                    stuff += "\n";
+                } else {
+                    std::string msg = strprintf(PRIfileline " %s: excluded from serializable hash: %s\n",
+                                                value->file,
+                                                value->line,
+                                                traits->name,
+                                                value->name);
+
+                    fputs(msg.c_str(), stdout);
+#if SYSTEM_WINDOWS
+                    OutputDebugStringA(msg.c_str());
+#endif
+
+                    all_good = false;
+                }
             }
 
             char wanted_hash[SHA1::DIGEST_STR_SIZE];
