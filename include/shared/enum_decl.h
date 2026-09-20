@@ -37,13 +37,12 @@
     EQPNV(NAME, 1 << (BIT))     \
     EPN_BIT_FIELD(NAME, (BIT), 1)
 
-#define EPN_BIT_FIELD(NAME, BIT, WIDTH) \
-    EQPNV(CONCAT2(NAME, Shift), (BIT))  \
-    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
+#define EPN_BIT_FIELD(NAME, BIT, WIDTH)                      \
+    EQPNV(CONCAT2(NAME, Shift), (BIT))                       \
+    EQPNV(CONCAT2(NAME, Mask), ((uint64_t)1 << (WIDTH)) - 1) \
+    EQPNV(CONCAT2(NAME, Width), (WIDTH))
 
-#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENAME2) \
-    EQPNV(CONCAT2(NAME, Shift), (BIT))               \
-    EQPNV(CONCAT2(NAME, Mask), (1u << (WIDTH)) - 1)
+#define EPN_BIT_FIELD_ENUM(NAME, BIT, WIDTH, ENAME2) EPN_BIT_FIELD(NAME, (BIT), (WIDTH))
 
 #define EQN(NAME) EN(NAME)
 #define EQNV(NAME, VALUE) ENV(NAME, VALUE)
