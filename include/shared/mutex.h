@@ -27,22 +27,27 @@
 class Mutex;
 
 struct MutexStats {
-    uint64_t num_locks = 0;
-    uint64_t num_contended_locks = 0;
-    uint64_t total_lock_wait_ticks = 0;
-    uint64_t min_lock_wait_ticks = UINT64_MAX;
-    uint64_t max_lock_wait_ticks = 0;
-    uint64_t num_successful_try_locks = 0;
-    uint64_t start_ticks;
-    uint64_t num_try_locks = 0;
+    struct LockStats {
+        uint64_t num_locks = 0;
+        uint64_t num_contended_locks = 0;
+        uint64_t total_lock_wait_ticks = 0;
+        uint64_t min_lock_wait_ticks = UINT64_MAX;
+        uint64_t max_lock_wait_ticks = 0;
+        uint64_t num_successful_try_locks = 0;
+        uint64_t num_try_locks = 0;
+        bool ever_locked = false;
+    };
 
-    bool ever_locked = false;
+    LockStats lock_stats;
+    LockStats lock_shared_stats;
+    uint64_t start_ticks;
 
     MutexStats();
 };
 
 struct MutexDetails {
     std::string name;
+    bool is_shared_mutex = false;
     MutexStats stats;
 };
 
@@ -65,36 +70,38 @@ struct MutexMetadata {
 struct MutexFullMetadata;
 struct MutexMetadataImpl;
 
-class Mutex {
+class MutexBase {
   public:
-    Mutex();
-    ~Mutex();
+    ~MutexBase();
 
-    Mutex(const Mutex &) = delete;
-    Mutex &operator=(const Mutex &) = delete;
+    MutexBase(const MutexBase &) = delete;
+    MutexBase &operator=(const MutexBase &) = delete;
 
-    Mutex(Mutex &&) = delete;
-    Mutex &operator=(Mutex &&) = delete;
+    MutexBase(MutexBase &&) = delete;
+    MutexBase &operator=(MutexBase &&) = delete;
 
     void SetName(std::string name);
 
-    // the returned value isn't protected by any kind of mutex or
-    // anything, so...
-    MutexMetadata *GetMutableMetadata();
-    const MutexMetadata *GetMetadata() const;
+    //// the returned value isn't protected by any kind of mutex or
+    //// anything, so...
+    //MutexMetadata *GetMutableMetadata();
+    //const MutexMetadata *GetMetadata() const;
 
-    // the returned change counter will never be 0.
-    static uint64_t GetMetadataChangeCounter();
+  protected:
+    explicit MutexBase(std::shared_ptr<MutexFullMetadata> metadata);
+    // This is just the value of &m_metadata_shared_ptr.get()->meta,
+    // in an attempt to avoid atrocious debug build performance.
+    MutexMetadataImpl *m_meta = nullptr;
 
-    // there's a possible race condition, but it doesn't really matter. Metadata changes aren't intended to be a regular occurrence.
-    static std::vector<std::shared_ptr<MutexMetadata>> GetAllMetadata();
+  private:
+    std::shared_ptr<MutexFullMetadata> m_metadata;
+};
 
-    static uint64_t GetNameOverheadTicks();
+class Mutex : private MutexBase {
+  public:
+    Mutex();
 
-    // If true, assume that try_lock is effectively free when it succeeds.
-    // Potentially save on some system calls for every lock.
-    static bool GetAssumeFreeUncontendedLocks();
-    static void SetAssumeFreeUncontendedLocks(bool assume_free_uncontended_locks);
+    using MutexBase::SetName;
 
     void lock();
     bool try_lock();
@@ -102,14 +109,38 @@ class Mutex {
 
   protected:
   private:
-    std::shared_ptr<MutexFullMetadata> m_metadata;
-
-    // This is just the value of &m_metadata_shared_ptr.get()->meta,
-    // in an attempt to avoid atrocious debug build performance.
-    MutexMetadataImpl *m_meta = nullptr;
-
-    void OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta);
 };
+
+class SharedMutex : private MutexBase {
+  public:
+    SharedMutex();
+
+    using MutexBase::SetName;
+
+    void lock();
+    bool try_lock();
+    void unlock();
+
+    void lock_shared();
+    bool try_lock_shared();
+    void unlock_shared();
+
+  protected:
+  private:
+};
+
+// If true, assume that try_lock is effectively free when it succeeds.
+// Potentially save on some system calls for every lock.
+bool GetAssumeFreeUncontendedMutexLocks();
+void SetAssumeFreeUncontendedMutexLocks(bool assume_free_uncontended_locks);
+
+uint64_t GetMutexNameOverheadTicks();
+
+// the returned change counter will never be 0.
+uint64_t GetMutexMetadataChangeCounter();
+
+// there's a possible race condition, but it doesn't really matter. Metadata changes aren't intended to be a regular occurrence.
+std::vector<std::shared_ptr<MutexMetadata>> GetAllMutexMetadata();
 
 // for use as a global.
 class MutexNameSetter {
@@ -170,6 +201,32 @@ class LockGuard {
     LockGuard<MutexType> &operator=(const LockGuard<MutexType> &) = delete;
     LockGuard(LockGuard<MutexType> &&) = delete;
     LockGuard<MutexType> &operator=(LockGuard<MutexType> &&) = delete;
+
+  protected:
+  private:
+    MutexType *m_mutex = nullptr;
+};
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+// Ditto, but for std::shared_lock.
+template <class MutexType>
+class SharedLock {
+  public:
+    explicit SharedLock(MutexType &mutex)
+        : m_mutex(&mutex) {
+        m_mutex->lock_shared();
+    }
+
+    ~SharedLock() {
+        m_mutex->unlock_shared();
+    }
+
+    SharedLock(const SharedLock<MutexType> &) = delete;
+    SharedLock<MutexType> &operator=(const SharedLock<MutexType> &) = delete;
+    SharedLock(SharedLock<MutexType> &&) = delete;
+    SharedLock<MutexType> &operator=(SharedLock<MutexType> &&) = delete;
 
   protected:
   private:

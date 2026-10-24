@@ -2,5 +2,6 @@
 EBEGIN_DERIVED(uint8_t)
 EPN_BIT_FLAG(Lock, 0)
 EPN_BIT_FLAG(ContendedLock, 1)
+EPN_BIT_FLAG(ContendedLockShared, 2)
 EEND()
 #undef ENAME

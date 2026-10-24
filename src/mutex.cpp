@@ -11,6 +11,7 @@
 #include <string.h>
 #include <shared_mutex>
 #include <algorithm>
+#include <variant>
 
 #include <shared/enum_def.h>
 #include <shared/mutex.inl>
@@ -20,22 +21,28 @@
 //////////////////////////////////////////////////////////////////////////
 
 struct MutexMetadataImpl : public MutexMetadata {
-    std::mutex mutex;
+    std::variant<std::mutex, std::shared_mutex> actual_mutex;
+    std::mutex *mutex = nullptr;
+    std::shared_mutex *shared_mutex = nullptr;
 
     // num_try_locks and ever_locked values are both bogus. The caller's copy is filled out correctly on demand by GetDetails.
     MutexStats stats;
     std::atomic<bool> reset{false};
 
-    std::atomic<bool> ever_locked{false};
+    std::atomic<bool> ever_lock{false};
+    std::atomic<bool> ever_lock_shared{false};
 
     // A try_lock needs accounting for even if the mutex ends up not taken.
     std::atomic<uint64_t> num_try_locks{0};
+    std::atomic<uint64_t> num_try_lock_shareds{0};
 
     std::atomic<uint8_t> interesting_events{0};
 
     mutable std::shared_mutex name_mutex;
     std::string name;
 
+    template <class T>
+    MutexMetadataImpl(const T *);
     ~MutexMetadataImpl();
 
     void RequestReset() override;
@@ -48,7 +55,7 @@ struct MutexMetadataImpl : public MutexMetadata {
 
 struct MutexFullMetadata : public std::enable_shared_from_this<MutexFullMetadata> {
     MutexFullMetadata *next = nullptr, *prev = nullptr;
-    Mutex *mutex = nullptr;
+    MutexBase *mutex = nullptr;
     MutexMetadataImpl meta;
 
     // this is just here to grab an appropriate extra ref to the
@@ -56,6 +63,9 @@ struct MutexFullMetadata : public std::enable_shared_from_this<MutexFullMetadata
     // metadata mutex shared_ptr, that mutex would otherwise be
     // destroyed after it...
     std::shared_ptr<std::mutex> metadata_list_mutex;
+
+    template <class T>
+    MutexFullMetadata(const T *);
 };
 
 static std::once_flag g_mutex_metadata_list_mutex_initialise_once_flag;
@@ -84,7 +94,7 @@ static void EnsureMutexMetadataListInitialised() {
 }
 
 //////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////ko
 
 static void CheckLockedMetadataList() {
     if (MutexFullMetadata *m = g_mutex_metadata_head) {
@@ -129,6 +139,16 @@ MutexMetadata::~MutexMetadata() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+template <class T>
+MutexMetadataImpl::MutexMetadataImpl(const T *)
+    : actual_mutex(std::in_place_type_t<T>()) {
+    this->mutex = std::get_if<std::mutex>(&this->actual_mutex);
+    this->shared_mutex = std::get_if<std::shared_mutex>(&this->actual_mutex);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 MutexMetadataImpl::~MutexMetadataImpl() {
 }
 
@@ -145,11 +165,15 @@ void MutexMetadataImpl::RequestReset() {
 //////////////////////////////////////////////////////////////////////////
 
 void MutexMetadataImpl::GetDetails(MutexDetails *details) const {
+    details->is_shared_mutex = !!this->shared_mutex;
+
     details->stats = this->stats;
 
-    details->stats.num_try_locks = this->num_try_locks.load(std::memory_order_acquire);
+    details->stats.lock_stats.num_try_locks = this->num_try_locks.load(std::memory_order_acquire);
+    details->stats.lock_shared_stats.num_try_locks = this->num_try_lock_shareds.load(std::memory_order_acquire);
 
-    details->stats.ever_locked = this->ever_locked.load(std::memory_order_acquire);
+    details->stats.lock_stats.ever_locked = this->ever_lock.load(std::memory_order_acquire);
+    details->stats.lock_shared_stats.ever_locked = this->ever_lock_shared.load(std::memory_order_acquire);
 
     {
         uint64_t start_ticks = GetCurrentTickCount();
@@ -186,13 +210,22 @@ void MutexMetadataImpl::SetInterestingEvents(uint8_t events) {
 void MutexMetadataImpl::Reset() {
     this->stats = {};
     this->num_try_locks.store(0);
+    this->num_try_lock_shareds.store(0);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-Mutex::Mutex()
-    : m_metadata(std::make_shared<MutexFullMetadata>()) {
+template <class T>
+MutexFullMetadata::MutexFullMetadata(const T *dummy)
+    : meta(dummy) {
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+MutexBase::MutexBase(std::shared_ptr<MutexFullMetadata> metadata)
+    : m_metadata(std::move(metadata)) {
     EnsureMutexMetadataListInitialised();
 
     m_meta = &m_metadata.get()->meta;
@@ -221,7 +254,7 @@ Mutex::Mutex()
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-Mutex::~Mutex() {
+MutexBase::~MutexBase() {
     {
         LockGuard<std::mutex> lock(*m_metadata->metadata_list_mutex);
 
@@ -247,7 +280,7 @@ Mutex::~Mutex() {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-void Mutex::SetName(std::string name) {
+void MutexBase::SetName(std::string name) {
     uint64_t start_ticks = GetCurrentTickCount();
 
     LockGuard<std::shared_mutex> lock(m_meta->name_mutex);
@@ -259,163 +292,8 @@ void Mutex::SetName(std::string name) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-MutexMetadata *Mutex::GetMutableMetadata() {
-    return m_meta;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-const MutexMetadata *Mutex::GetMetadata() const {
-    return m_meta;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-void Mutex::lock() {
-    const bool assume_free_uncontended_locks = g_assume_free_uncontended_locks.load(std::memory_order_acquire);
-
-    uint64_t lock_start_ticks = 0; //spurious initialization to inhibit warning
-    if (!assume_free_uncontended_locks) {
-        lock_start_ticks = GetCurrentTickCount();
-    }
-
-    uint64_t lock_wait_ticks = 0;
-
-    uint8_t interesting_events = m_meta->interesting_events.load(std::memory_order_relaxed);
-
-    if (m_meta->mutex.try_lock()) {
-        interesting_events &= (uint8_t)~MutexInterestingEvent_ContendedLock;
-    } else {
-        if (assume_free_uncontended_locks) {
-            lock_start_ticks = GetCurrentTickCount();
-        }
-
-        m_meta->mutex.lock();
-        ++m_meta->stats.num_contended_locks;
-
-        if (assume_free_uncontended_locks) {
-            lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
-        }
-    }
-
-    ++m_meta->stats.num_locks;
-    if (!assume_free_uncontended_locks) {
-        lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
-    }
-
-    if (m_meta->reset.exchange(false)) {
-        m_meta->Reset();
-    }
-
-    m_meta->ever_locked.store(true, std::memory_order_release);
-    m_meta->stats.total_lock_wait_ticks += lock_wait_ticks;
-
-    if (lock_wait_ticks < m_meta->stats.min_lock_wait_ticks) {
-        m_meta->stats.min_lock_wait_ticks = lock_wait_ticks;
-    }
-
-    if (lock_wait_ticks > m_meta->stats.max_lock_wait_ticks) {
-        m_meta->stats.max_lock_wait_ticks = lock_wait_ticks;
-    }
-
-    if (interesting_events != 0) {
-        this->OnInterestingEvents(interesting_events, m_meta);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-bool Mutex::try_lock() {
-    bool succeeded = m_meta->mutex.try_lock();
-
-    if (succeeded) {
-        ++m_meta->stats.num_successful_try_locks;
-
-        // no need so set ever_locked - the successful lock that's blocking this
-        // one already did it
-    }
-
-    ++m_meta->num_try_locks;
-
-    if (m_meta->reset.exchange(false)) {
-        m_meta->Reset();
-    }
-
-    return succeeded;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-void Mutex::unlock() {
-    m_meta->mutex.unlock();
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-uint64_t Mutex::GetMetadataChangeCounter() {
-    EnsureMutexMetadataListInitialised();
-
-    LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
-
-    return g_mutex_metadata_list_change_counter;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-std::vector<std::shared_ptr<MutexMetadata>> Mutex::GetAllMetadata() {
-    EnsureMutexMetadataListInitialised();
-
-    LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
-
-    if (g_mutex_metadata_list_last_change_counter != g_mutex_metadata_list_change_counter) {
-        g_mutex_metadata_list.clear();
-
-        if (MutexFullMetadata *m = g_mutex_metadata_head) {
-            do {
-                g_mutex_metadata_list.push_back(std::shared_ptr<MutexMetadata>(m->shared_from_this(), &m->meta));
-
-                m = m->next;
-            } while (m != g_mutex_metadata_head);
-        }
-
-        g_mutex_metadata_list_last_change_counter = g_mutex_metadata_list_change_counter;
-    }
-
-    return g_mutex_metadata_list;
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-uint64_t Mutex::GetNameOverheadTicks() {
-    return g_mutex_name_overhead_ticks.load(std::memory_order_acquire);
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-bool Mutex::GetAssumeFreeUncontendedLocks() {
-    return g_assume_free_uncontended_locks.load(std::memory_order_acquire);
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-void Mutex::SetAssumeFreeUncontendedLocks(bool assume_free_uncontended_locks) {
-    g_assume_free_uncontended_locks.store(assume_free_uncontended_locks, std::memory_order_release);
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
 // This exists purely as somewhere to put a breakpoint.
-void Mutex::OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta) {
+static void OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *meta) {
     (void)meta;
 
     if (interesting_events & MutexInterestingEvent_Lock) {
@@ -435,6 +313,282 @@ void Mutex::OnInterestingEvents(uint8_t interesting_events, MutexMetadataImpl *m
         (void)x;
 #endif
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+template <class MutexType>
+static inline void Lock(MutexType *mutex, MutexMetadataImpl *meta) {
+    const bool assume_free_uncontended_locks = g_assume_free_uncontended_locks.load(std::memory_order_acquire);
+
+    uint64_t lock_start_ticks = 0; //spurious initialization to inhibit warning
+    if (!assume_free_uncontended_locks) {
+        lock_start_ticks = GetCurrentTickCount();
+    }
+
+    uint64_t lock_wait_ticks = 0;
+
+    uint8_t interesting_events = meta->interesting_events.load(std::memory_order_relaxed);
+
+    if (mutex->try_lock()) {
+        interesting_events &= (uint8_t)~MutexInterestingEvent_ContendedLock;
+    } else {
+        if (assume_free_uncontended_locks) {
+            lock_start_ticks = GetCurrentTickCount();
+        }
+
+        mutex->lock();
+        ++meta->stats.lock_stats.num_contended_locks;
+
+        if (assume_free_uncontended_locks) {
+            lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
+        }
+    }
+
+    ++meta->stats.lock_stats.num_locks;
+    if (!assume_free_uncontended_locks) {
+        lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
+    }
+
+    if (meta->reset.exchange(false)) {
+        meta->Reset();
+    }
+
+    meta->ever_lock.store(true, std::memory_order_release);
+    meta->stats.lock_stats.total_lock_wait_ticks += lock_wait_ticks;
+
+    if (lock_wait_ticks < meta->stats.lock_stats.min_lock_wait_ticks) {
+        meta->stats.lock_stats.min_lock_wait_ticks = lock_wait_ticks;
+    }
+
+    if (lock_wait_ticks > meta->stats.lock_stats.max_lock_wait_ticks) {
+        meta->stats.lock_stats.max_lock_wait_ticks = lock_wait_ticks;
+    }
+
+    if (interesting_events != 0) {
+        OnInterestingEvents(interesting_events, meta);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+template <class MutexType>
+static inline bool TryLock(MutexType *mutex, MutexMetadataImpl *meta) {
+    bool succeeded = mutex->try_lock();
+
+    if (succeeded) {
+        ++meta->stats.lock_stats.num_successful_try_locks;
+
+        // no need so set ever_locked - the successful lock that's blocking this
+        // one already did it
+    }
+
+    ++meta->num_try_locks;
+
+    if (meta->reset.exchange(false)) {
+        meta->Reset();
+    }
+
+    return succeeded;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+Mutex::Mutex()
+    : MutexBase(std::make_shared<MutexFullMetadata>((std::mutex *)nullptr)) {
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void Mutex::lock() {
+    Lock(m_meta->mutex, m_meta);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+bool Mutex::try_lock() {
+    return TryLock(m_meta->mutex, m_meta);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void Mutex::unlock() {
+    m_meta->mutex->unlock();
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+SharedMutex::SharedMutex()
+    : MutexBase(std::make_shared<MutexFullMetadata>((std::shared_mutex *)nullptr)) {
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void SharedMutex::lock() {
+    Lock(m_meta->shared_mutex, m_meta);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+bool SharedMutex::try_lock() {
+    return TryLock(m_meta->shared_mutex, m_meta);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void SharedMutex::unlock() {
+    m_meta->shared_mutex->unlock();
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void SharedMutex::lock_shared() {
+    const bool assume_free_uncontended_locks = g_assume_free_uncontended_locks.load(std::memory_order_acquire);
+
+    uint64_t lock_start_ticks = 0;
+    if (!assume_free_uncontended_locks) {
+        lock_start_ticks = GetCurrentTickCount();
+    }
+
+    uint64_t lock_wait_ticks = 0;
+
+    uint8_t interesting_events = m_meta->interesting_events.load(std::memory_order_relaxed);
+
+    if (m_meta->shared_mutex->try_lock_shared()) {
+        interesting_events &= (uint8_t)~MutexInterestingEvent_ContendedLockShared;
+    } else {
+        if (assume_free_uncontended_locks) {
+            lock_start_ticks = GetCurrentTickCount();
+        }
+
+        m_meta->shared_mutex->lock_shared();
+        ++m_meta->stats.lock_shared_stats.num_contended_locks;
+
+        if (assume_free_uncontended_locks) {
+            lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
+        }
+    }
+
+    ++m_meta->stats.lock_shared_stats.num_locks;
+    if (!assume_free_uncontended_locks) {
+        lock_wait_ticks += GetCurrentTickCount() - lock_start_ticks;
+    }
+
+    if (m_meta->reset.exchange(false)) {
+        m_meta->Reset();
+    }
+
+    m_meta->ever_lock_shared.store(true, std::memory_order_release);
+    m_meta->stats.lock_shared_stats.total_lock_wait_ticks += lock_wait_ticks;
+
+    if (lock_wait_ticks < m_meta->stats.lock_shared_stats.min_lock_wait_ticks) {
+        m_meta->stats.lock_shared_stats.min_lock_wait_ticks = lock_wait_ticks;
+    }
+
+    if (lock_wait_ticks > m_meta->stats.lock_shared_stats.max_lock_wait_ticks) {
+        m_meta->stats.lock_shared_stats.max_lock_wait_ticks = lock_wait_ticks;
+    }
+
+    if (interesting_events != 0) {
+        OnInterestingEvents(interesting_events, m_meta);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+bool SharedMutex::try_lock_shared() {
+    bool succeeded = m_meta->shared_mutex->try_lock_shared();
+
+    if (succeeded) {
+        ++m_meta->stats.lock_shared_stats.num_successful_try_locks;
+
+        // no need so set ever_locked - the successful lock that's blocking this
+        // one already did it
+    }
+
+    ++m_meta->num_try_lock_shareds;
+
+    if (m_meta->reset.exchange(false)) {
+        m_meta->Reset();
+    }
+
+    return succeeded;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void SharedMutex::unlock_shared() {
+    m_meta->shared_mutex->unlock_shared();
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+bool GetAssumeFreeUncontendedMutexLocks() {
+    return g_assume_free_uncontended_locks.load(std::memory_order_acquire);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void SetAssumeFreeUncontendedMutexLocks(bool assume_free_uncontended_locks) {
+    g_assume_free_uncontended_locks.store(assume_free_uncontended_locks, std::memory_order_release);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+uint64_t GetMutexNameOverheadTicks() {
+    return g_mutex_name_overhead_ticks.load(std::memory_order_acquire);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+uint64_t GetMutexMetadataChangeCounter() {
+    EnsureMutexMetadataListInitialised();
+
+    LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
+
+    return g_mutex_metadata_list_change_counter;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<MutexMetadata>> GetAllMutexMetadata() {
+    EnsureMutexMetadataListInitialised();
+
+    LockGuard<std::mutex> lock(*g_mutex_metadata_list_mutex);
+
+    if (g_mutex_metadata_list_last_change_counter != g_mutex_metadata_list_change_counter) {
+        g_mutex_metadata_list.clear();
+
+        if (MutexFullMetadata *m = g_mutex_metadata_head) {
+            do {
+                g_mutex_metadata_list.push_back(std::shared_ptr<MutexMetadata>(m->shared_from_this(), &m->meta));
+
+                m = m->next;
+            } while (m != g_mutex_metadata_head);
+        }
+
+        g_mutex_metadata_list_last_change_counter = g_mutex_metadata_list_change_counter;
+    }
+
+    return g_mutex_metadata_list;
 }
 
 //////////////////////////////////////////////////////////////////////////
