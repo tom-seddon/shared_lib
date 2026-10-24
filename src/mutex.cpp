@@ -154,9 +154,10 @@ void MutexMetadataImpl::GetDetails(MutexDetails *details) const {
     {
         uint64_t start_ticks = GetCurrentTickCount();
 
-        this->name_mutex.lock_shared();
-        details->name = this->name;
-        this->name_mutex.unlock_shared();
+        {
+            std::shared_lock<std::shared_mutex> lock(this->name_mutex);
+            details->name = this->name;
+        }
 
         g_mutex_name_overhead_ticks.fetch_add(GetCurrentTickCount() - start_ticks, std::memory_order_acq_rel);
     }
