@@ -140,7 +140,14 @@ class EnumTraitsBase {
     int eend_line = -1;
     const char *eend_file = nullptr;
     const EnumValue *first_value = nullptr;
+
+    // If true, this enum is WIP. Skip some of the debug checks. (This isn't
+    // anything principled. It just skips the checks that I've needed skipping
+    // personally.)
     bool wip = false;
+
+    // If true, numbers will be deserialized - at own risk!
+    bool may_deserialize_numbers = false;
 
     EnumTraitsBase();
     virtual ~EnumTraitsBase() = default;
@@ -196,46 +203,48 @@ void to_json(nlohmann::json &j, const Enum<T> &value) {
 }
 
 template <class T>
-void from_json(const nlohmann::json &j, Enum<T> &value) {
+void from_json(const nlohmann::json &j, Enum<T> &e) {
     static_assert(EnumTraits<T>::IS_SERIALIZABLE);
+
+    const EnumTraitsBase *traits = &EnumTraits<T>::s_traits;
+
+    if (traits->may_deserialize_numbers) {
+        if (j.is_number()) {
+            typename EnumTraits<T>::BaseType j_value = j.get<typename EnumTraits<T>::BaseType>();
+            for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
+                if (value->value == j_value) {
+                    e.value = static_cast<T>(value->value);
+                    return;
+                }
+            }
+
+            throw nlohmann::json::type_error::create(302, std::string("bad ") + traits->name + " value: " + std::to_string(j_value), nullptr);
+        }
+    }
+
     std::string str = j.get<std::string>();
 
-    typename EnumTraits<T>::BaseType i = 0;
-    for (;;) {
-        const char *name = (*EnumTraits<T>::GET_NAME_FN)(i);
-        if (name[0] == '?') {
-            // Reached end of list.
+    for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
+        if (str == value->name) {
+            e.value = static_cast<T>(value->value);
             break;
         }
-
-        if (str == name) {
-            value.value = static_cast<T>(i);
-            break;
-        }
-
-        ++i;
     }
 }
 
 template <class T>
-void from_json(const nlohmann::json &j, EnumFlags<T> &value) {
+void from_json(const nlohmann::json &j, EnumFlags<T> &e) {
     static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     if (j.is_array()) {
-        value.value = 0;
+        e.value = 0;
 
         for (size_t i = 0; i < j.size(); ++i) {
             if (j[i].is_string()) {
                 const std::string &j_name = j[i].get<std::string>();
 
-                for (typename std::make_unsigned<typename EnumTraits<T>::BaseType>::type mask = 1; mask != 0; mask <<= 1) {
-                    const char *name = (*EnumTraits<T>::GET_NAME_FN)(static_cast<typename EnumTraits<T>::BaseType>(mask));
-                    if (name[0] == '?') {
-                        continue;
-                    }
-
-                    if (j_name == name) {
-                        value.value = static_cast<typename EnumTraits<T>::BaseType>(value.value | mask);
-                        break;
+                for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
+                    if (j_name == value->name) {
+                        e.value = static_cast<typename EnumTraits<T>::BaseType>(e.value | value->value);
                     }
                 }
             }
@@ -244,20 +253,14 @@ void from_json(const nlohmann::json &j, EnumFlags<T> &value) {
 }
 
 template <class T>
-void to_json(nlohmann::json &j, const EnumFlags<T> &value) {
+void to_json(nlohmann::json &j, const EnumFlags<T> &e) {
     static_assert(EnumTraits<T>::IS_SERIALIZABLE);
     j = nlohmann::json::array_t{};
-    for (typename std::make_unsigned<typename EnumTraits<T>::BaseType>::type mask = 1; mask != 0; mask <<= 1) {
-        const char *name = (*EnumTraits<T>::GET_NAME_FN)(static_cast<typename EnumTraits<T>::BaseType>(mask));
-        if (name[0] == '?') {
-            continue;
-        }
 
-        if (!(value.value & static_cast<typename EnumTraits<T>::BaseType>(mask))) {
-            continue;
+    for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
+        if (e.value & value->value) {
+            j.push_back(value->name);
         }
-
-        j.push_back(name);
     }
 }
 

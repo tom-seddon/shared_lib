@@ -173,7 +173,10 @@ void EnsureEnumsInitialised() {
             SHA1::HashBuffer(nullptr, wanted_hash, stuff.data(), stuff.size());
 
             if (strcmp(wanted_hash, traits->serializable_hash) != 0) {
-                std::string msg = strprintf(PRIfileline " %s: serializable hash: wanted \"%s\", got \"%s\"\n",
+                // (split the output over multiple lines, so that the wanted
+                // text is actually double clickable in the Visual Studio output
+                // window.)
+                std::string msg = strprintf(PRIfileline " %s: serializable hash:\n    wanted: %s\n       got: %s\n",
                                             traits->eend_file,
                                             traits->eend_line,
                                             traits->name,

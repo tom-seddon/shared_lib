@@ -55,11 +55,11 @@
 // Exclude previously defined value from serializable hash.
 #define EEXCLUDE_FROM_SERIALIZABLE_HASH()
 
-// Specify that this enum is WIP, avoiding some of the debug checks.
+// Set traits field NAME to VALUE.
 //
-// (This isn't anything principled. It just skips the checks that I've needed
-// skipping personally.)
-#define EMETA_WIP()
+// This is designed for use with the hack-/bodge-type flags (e.g., wip,
+// may_deserialize_numbers).
+#define EMETA_TRAITS_FIELD(NAME, VALUE)
 
 // Specify that this enum is N bits wide, rather than whatever size it actually
 // is.

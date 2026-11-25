@@ -102,7 +102,8 @@
 #define EQPN(NAME)
 #define EQPNV(NAME, VALUE)
 
-#define EMETA_WIP() traits->wip = true;
+#define EMETA_TRAITS_FIELD(NAME, VALUE) (traits->NAME) = (VALUE);
+
 #define EMETA_SIZE_BITS(N) traits->size_bits = (N);
 
 #define EUI_NAME(STR) prev_value->ui_name = (STR);
