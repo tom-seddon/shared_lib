@@ -212,7 +212,7 @@ void from_json(const nlohmann::json &j, Enum<T> &e) {
         if (j.is_number()) {
             typename EnumTraits<T>::BaseType j_value = j.get<typename EnumTraits<T>::BaseType>();
             for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
-                if (value->value == j_value) {
+                if ((typename EnumTraits<T>::BaseType)value->value == j_value) {
                     e.value = static_cast<T>(value->value);
                     return;
                 }
