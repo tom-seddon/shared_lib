@@ -153,3 +153,18 @@ bool PathDeleteFile(const std::string &path) {
     BOOL good = DeleteFileW(GetWideString(path).c_str());
     return good != 0;
 }
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+std::string PathGetPasteFriendly(const std::string &path) {
+    std::string path2 = path;
+
+    for (char &c : path2) {
+        if (c == '/') {
+            c = '\\';
+        }
+    }
+
+    return path2;
+}
