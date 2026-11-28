@@ -71,6 +71,7 @@
                                                                                       \
     template <>                                                                       \
     struct EnumTraits<ENAME> : public EnumTraitsBaseTyped<CONCAT2(ENAME, BaseType)> { \
+        typedef CONCAT2(ENAME, BaseType) BaseType;                                    \
         typedef ENAME EnumType;                                                       \
         typedef const char *(*GetNameFn)(BaseType);                                   \
         static const GetNameFn GET_NAME_FN;                                           \

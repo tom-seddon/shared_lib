@@ -166,6 +166,7 @@ class EnumTraitsBase {
     virtual void SetValue(void *ptr, uint64_t value) const = 0;
 
     const EnumValue *FindEnumValue(const void *ptr) const;
+    const EnumValue *FindEnumValueByName(const char *name) const;
 
   protected:
     void Init1(const char *name, bool is_signed, size_t size_bits, const char *serializable_hash, int eend_line, const char *eend_file);
@@ -178,6 +179,10 @@ template <class T>
 class EnumTraitsBaseTyped : public EnumTraitsBase {
   public:
     typedef T BaseType;
+
+    const EnumValue *FindEnumValue(T value) const {
+        return this->EnumTraitsBase::FindEnumValue(&value);
+    }
 
     uint64_t GetValue(const void *ptr) const override {
         return (uint64_t)(int64_t)*(BaseType *)ptr;
@@ -206,16 +211,14 @@ template <class T>
 void from_json(const nlohmann::json &j, Enum<T> &e) {
     static_assert(EnumTraits<T>::IS_SERIALIZABLE);
 
-    const EnumTraitsBase *traits = &EnumTraits<T>::s_traits;
+    const EnumTraitsBaseTyped<typename EnumTraits<T>::BaseType> *traits = &EnumTraits<T>::s_traits;
 
     if (traits->may_deserialize_numbers) {
         if (j.is_number()) {
             typename EnumTraits<T>::BaseType j_value = j.get<typename EnumTraits<T>::BaseType>();
-            for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
-                if ((typename EnumTraits<T>::BaseType)value->value == j_value) {
-                    e.value = static_cast<T>(value->value);
-                    return;
-                }
+            if (const EnumValue *value = traits->FindEnumValue(j_value)) {
+                e.value = (typename EnumTraits<T>::EnumType)j_value;
+                return;
             }
 
             throw nlohmann::json::type_error::create(302, std::string("bad ") + traits->name + " value: " + std::to_string(j_value), nullptr);
@@ -224,7 +227,7 @@ void from_json(const nlohmann::json &j, Enum<T> &e) {
 
     std::string str = j.get<std::string>();
 
-    for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
+    for (const EnumValue *value = traits->first_value; value; value = value->next) {
         if (str == value->name) {
             e.value = static_cast<T>(value->value);
             break;
@@ -242,10 +245,8 @@ void from_json(const nlohmann::json &j, EnumFlags<T> &e) {
             if (j[i].is_string()) {
                 const std::string &j_name = j[i].get<std::string>();
 
-                for (const EnumValue *value = EnumTraits<T>::s_traits.first_value; value; value = value->next) {
-                    if (j_name == value->name) {
-                        e.value = static_cast<typename EnumTraits<T>::BaseType>(e.value | value->value);
-                    }
+                if (const EnumValue *value = EnumTraits<T>::s_traits.FindEnumValueByName(j_name.c_str())) {
+                    e.value = static_cast<typename EnumTraits<T>::BaseType>(e.value | value->value);
                 }
             }
         }

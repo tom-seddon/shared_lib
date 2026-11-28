@@ -72,6 +72,19 @@ const EnumValue *EnumTraitsBase::FindEnumValue(const void *ptr) const {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+const EnumValue *EnumTraitsBase::FindEnumValueByName(const char *name_) const {
+    for (const EnumValue *value = this->first_value; value; value = value->next) {
+        if (strcmp(value->name, name_) == 0) {
+            return value;
+        }
+    }
+
+    return nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 void EnumTraitsBase::Init1(const char *name_, bool is_signed_, size_t size_bytes_, const char *serializable_hash_, int eend_line_, const char *eend_file_) {
     this->name = name_;
     this->is_signed = is_signed_;
